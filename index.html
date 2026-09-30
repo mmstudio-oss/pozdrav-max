@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#7c3aed" />
-
   <title>Поздравь</title>
 
-  <!-- MAX Bridge -->
+  <!-- MAX Bridge. На этапе 2 он подключён заранее,
+       прямую отправку PNG в MAX добавим на этапе 3. -->
   <script src="https://st.max.ru/js/max-web-app.js"></script>
 
   <link rel="stylesheet" href="style.css" />
@@ -16,17 +16,23 @@
 <body>
   <main class="app">
     <header class="header">
-      <div class="logo">🎁</div>
-
+      <div class="logo" aria-hidden="true">🎁</div>
       <div>
         <h1>Поздравь</h1>
-        <p>Персональное поздравление за несколько секунд</p>
+        <p>Создайте персональную открытку за несколько секунд</p>
       </div>
     </header>
 
     <section class="card">
-      <label for="occasion">Повод</label>
+      <div class="section-title">
+        <span class="step">1</span>
+        <div>
+          <h2>Данные открытки</h2>
+          <p>Укажите повод, имя и стиль поздравления.</p>
+        </div>
+      </div>
 
+      <label for="occasion">Повод</label>
       <select id="occasion">
         <option value="birthday">🎂 День рождения</option>
         <option value="morning">☀️ Доброе утро</option>
@@ -36,7 +42,6 @@
       </select>
 
       <label for="name">Имя</label>
-
       <input
         id="name"
         type="text"
@@ -45,8 +50,7 @@
         autocomplete="off"
       />
 
-      <label for="style">Стиль</label>
-
+      <label for="style">Стиль текста</label>
       <select id="style">
         <option value="warm">Душевно</option>
         <option value="fun">С юмором</option>
@@ -54,49 +58,102 @@
         <option value="short">Коротко</option>
       </select>
 
-      <label for="details">Пара слов о человеке</label>
-
+      <label for="details">Пара слов о человеке <span class="optional">(необязательно)</span></label>
       <textarea
         id="details"
-        maxlength="120"
+        maxlength="100"
         placeholder="Например: любит путешествия, кофе и хорошие шутки"
       ></textarea>
-
-      <button id="generateButton" class="button button-primary">
-        ✨ Создать поздравление
-      </button>
 
       <p id="errorMessage" class="error" aria-live="polite"></p>
     </section>
 
-    <section id="resultSection" class="card result hidden">
-      <div class="greeting-preview">
-        <div class="preview-icon">🎉</div>
-
-        <h2 id="greetingTitle"></h2>
-
-        <p id="greetingText"></p>
-
-        <small>Создано в «Поздравь»</small>
+    <section class="card">
+      <div class="section-title">
+        <span class="step">2</span>
+        <div>
+          <h2>Выберите оформление</h2>
+          <p>Шаблон можно менять сколько угодно.</p>
+        </div>
       </div>
 
-      <button id="shareButton" class="button button-primary">
-        📨 Отправить в MAX
+      <div class="template-grid" id="templateGrid">
+        <button class="template-option active" type="button" data-template="celebration" aria-pressed="true">
+          <span class="template-preview celebration-preview">🎉</span>
+          <span>Праздник</span>
+        </button>
+
+        <button class="template-option" type="button" data-template="sunrise" aria-pressed="false">
+          <span class="template-preview sunrise-preview">☀️</span>
+          <span>Рассвет</span>
+        </button>
+
+        <button class="template-option" type="button" data-template="flowers" aria-pressed="false">
+          <span class="template-preview flowers-preview">🌸</span>
+          <span>Цветы</span>
+        </button>
+
+        <button class="template-option" type="button" data-template="love" aria-pressed="false">
+          <span class="template-preview love-preview">❤️</span>
+          <span>Любовь</span>
+        </button>
+
+        <button class="template-option" type="button" data-template="night" aria-pressed="false">
+          <span class="template-preview night-preview">🌙</span>
+          <span>Ночь</span>
+        </button>
+      </div>
+
+      <button id="generateButton" class="button button-primary">
+        ✨ Создать открытку
       </button>
+    </section>
+
+    <section id="resultSection" class="card hidden">
+      <div class="section-title">
+        <span class="step">3</span>
+        <div>
+          <h2>Готовая открытка</h2>
+          <p>PNG создаётся прямо на вашем устройстве.</p>
+        </div>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas
+          id="cardCanvas"
+          width="1080"
+          height="1350"
+          aria-label="Предпросмотр готовой открытки"
+        ></canvas>
+      </div>
+
+      <div class="action-grid">
+        <button id="downloadButton" class="button button-primary">
+          ⬇️ Скачать PNG
+        </button>
+
+        <button id="shareFileButton" class="button button-secondary">
+          ↗️ Поделиться PNG
+        </button>
+      </div>
 
       <button id="anotherButton" class="button button-secondary">
-        🔄 Другой вариант
-      </button>
-
-      <button id="editButton" class="button button-secondary">
-        ✏️ Изменить данные
+        🔄 Другой вариант текста
       </button>
 
       <p id="shareStatus" class="status" aria-live="polite"></p>
+
+      <div class="info-box">
+        <strong>Отправка именно изображения в MAX</strong>
+        <p>
+          На этом этапе PNG уже создаётся. Прямая кнопка «Отправить изображение в MAX»
+          появится на этапе 3, когда добавим сервер и MAX Bot API.
+        </p>
+      </div>
     </section>
 
     <footer>
-      MVP мини-приложения «Поздравь»
+      MVP «Поздравь» · Этап 2
     </footer>
   </main>
 
