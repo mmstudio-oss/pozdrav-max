@@ -1,1 +1,17 @@
-
+{
+  "name": "pozdrav-max-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend для мини-приложения Поздравь в MAX",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}
