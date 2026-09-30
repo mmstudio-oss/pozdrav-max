@@ -1,4 +1,6 @@
-const API_BASE_URL = "https://mmstudio-oss-pozdrav-max-5bd2.twc1.net";
+// ВАЖНО: замените на технический HTTPS-адрес вашего backend в Timeweb.
+// Без /health и без завершающего слеша.
+const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
 
 const occasionInput = document.getElementById("occasion");
 const nameInput = document.getElementById("name");
@@ -13,6 +15,8 @@ const sendMaxButton = document.getElementById("sendMaxButton");
 const resultSection = document.getElementById("resultSection");
 const errorMessage = document.getElementById("errorMessage");
 const shareStatus = document.getElementById("shareStatus");
+const generationBox = document.getElementById("generationBox");
+const generationStatus = document.getElementById("generationStatus");
 
 const canvas = document.getElementById("cardCanvas");
 const ctx = canvas.getContext("2d");
@@ -20,7 +24,20 @@ const ctx = canvas.getContext("2d");
 let selectedTemplate = "celebration";
 let previousTextIndex = -1;
 let lastGreeting = null;
+let lastAiImage = null;
+let isGenerating = false;
 
+const occasionMeta = {
+  birthday: { emoji: "🎂", label: "ДЕНЬ РОЖДЕНИЯ" },
+  morning: { emoji: "☀️", label: "ДОБРОЕ УТРО" },
+  mother: { emoji: "🌹", label: "ДЛЯ МАМЫ" },
+  love: { emoji: "❤️", label: "ДЛЯ ТЕБЯ" },
+  night: { emoji: "🌙", label: "ДОБРЫХ СНОВ" },
+  newyear: { emoji: "🎄", label: "С НОВЫМ ГОДОМ" },
+  march8: { emoji: "💐", label: "8 МАРТА" },
+  wedding: { emoji: "💍", label: "СВАДЬБА" },
+  graduation: { emoji: "🎓", label: "ВЫПУСКНОЙ" }
+};
 
 const textVariants = {
   birthday: {
@@ -45,7 +62,6 @@ const textVariants = {
       "Ярких событий, верных людей рядом и исполнения желаний!"
     ]
   },
-
   morning: {
     warm: [
       "Доброе утро! Пусть сегодняшний день начнётся спокойно, а продолжится приятными событиями.",
@@ -55,7 +71,7 @@ const textVariants = {
     fun: [
       "Доброе утро! Кофе уже готов морально поддерживать тебя — осталось только начать день.",
       "Пусть сегодня всё работает с первого раза, включая настроение!",
-      "Доброе утро! Желаю, чтобы сегодня будильник оказался самой сложной проблемой дня."
+      "Желаю, чтобы будильник оказался самой сложной проблемой сегодняшнего дня."
     ],
     beautiful: [
       "Пусть этот день начнётся со света, хороших мыслей и ощущения, что впереди обязательно случится что-то приятное.",
@@ -68,7 +84,6 @@ const textVariants = {
       "Пусть сегодня всё сложится хорошо."
     ]
   },
-
   mother: {
     warm: [
       "Спасибо за твою заботу, доброту и тепло. Пусть у тебя будет как можно больше счастливых и спокойных дней.",
@@ -87,11 +102,10 @@ const textVariants = {
     ],
     short: [
       "Мама, спасибо, что ты есть. Люблю тебя!",
-      "Мама, счастья тебе, здоровья и много улыбок!",
+      "Счастья, здоровья и много улыбок!",
       "Самой любимой маме — здоровья, тепла и радости!"
     ]
   },
-
   love: {
     warm: [
       "Спасибо, что делаешь обычные дни особенными. Пусть впереди у нас будет ещё много счастливых моментов.",
@@ -108,13 +122,8 @@ const textVariants = {
       "С тобой даже обычные моменты становятся теми, которые хочется запомнить.",
       "Пусть наша история состоит из тёплых встреч, поддержки и множества красивых воспоминаний."
     ],
-    short: [
-      "Люблю тебя.",
-      "Ты — мой человек.",
-      "Спасибо, что ты рядом."
-    ]
+    short: ["Люблю тебя.", "Ты — мой человек.", "Спасибо, что ты рядом."]
   },
-
   night: {
     warm: [
       "Спокойной ночи. Пусть сегодняшний день останется позади, а завтра принесёт что-то хорошее.",
@@ -136,48 +145,80 @@ const textVariants = {
       "Отдыхай. Завтра будет новый хороший день.",
       "Добрых снов и спокойной ночи."
     ]
+  },
+  newyear: {
+    warm: [
+      "Пусть новый год принесёт здоровье, тепло, спокойствие и множество счастливых встреч.",
+      "Желаю, чтобы в новом году рядом были любимые люди, а поводов для радости становилось всё больше.",
+      "Пусть новый год откроет дорогу добрым переменам, уютным вечерам и мечтам, которые сбываются."
+    ],
+    fun: [
+      "Пусть в новом году дедлайны будут добрее, выходные длиннее, а чудеса случаются без предварительной записи!",
+      "Желаю, чтобы новый год обновился без ошибок и работал стабильно все двенадцать месяцев!",
+      "Пусть шампанское искрится, настроение не зависает, а удача всегда остаётся онлайн!"
+    ],
+    beautiful: [
+      "Пусть новый год наполнится светом, вдохновением и мгновениями, которые захочется бережно хранить.",
+      "Желаю тихого волшебства, красивых встреч и ощущения, что самое хорошее ещё впереди.",
+      "Пусть каждый месяц нового года оставляет после себя тёплое воспоминание."
+    ],
+    short: ["С Новым годом! Счастья, здоровья и чудес!", "Пусть новый год будет добрым и счастливым!", "Тепла, удачи и исполнения желаний!"]
+  },
+  march8: {
+    warm: [
+      "Пусть каждый день приносит заботу, уважение, тепло и искренние поводы улыбаться.",
+      "Желаю весеннего настроения, душевного тепла и людей рядом, которые умеют ценить и радовать.",
+      "Пусть в жизни будет больше цветов без повода, приятных сюрпризов и времени для себя."
+    ],
+    fun: [
+      "Желаю цветов, комплиментов и официального выходного от всех домашних дел!",
+      "Пусть весна включает режим: больше солнца, меньше забот и максимум приятных сюрпризов!",
+      "Желаю, чтобы сегодня всё было можно, а всё скучное — можно было отложить!"
+    ],
+    beautiful: [
+      "Пусть эта весна принесёт свет, вдохновение и ощущение собственной неповторимости.",
+      "Желаю красоты в деталях, нежности в словах и гармонии в каждом новом дне.",
+      "Пусть вокруг всегда будет место для цветов, света и искренних чувств."
+    ],
+    short: ["С 8 Марта! Счастья, любви и весны в душе!", "Тепла, красоты и прекрасного настроения!", "Пусть каждый день радует!"]
+  },
+  wedding: {
+    warm: [
+      "Пусть ваша семья будет местом любви, поддержки, доверия и самых тёплых воспоминаний.",
+      "Желаю вместе пройти через тысячи счастливых дней, сохраняя нежность и уважение друг к другу.",
+      "Пусть ваш общий путь будет наполнен заботой, радостью и ощущением, что дома всегда ждут."
+    ],
+    fun: [
+      "Желаю любви без лимитов, путешествий без отмен и семейного чата только с хорошими новостями!",
+      "Пусть спор о том, что смотреть вечером, остаётся самой серьёзной семейной проблемой!",
+      "Желаю идеального баланса: много любви, вкусных ужинов и права иногда выбирать сериал по очереди!"
+    ],
+    beautiful: [
+      "Пусть сегодняшний день станет первой страницей долгой и очень красивой семейной истории.",
+      "Желаю вам беречь тепло этой встречи и с каждым годом открывать друг в друге что-то новое.",
+      "Пусть любовь становится глубже, дом — уютнее, а совместные мечты — реальнее."
+    ],
+    short: ["С днём свадьбы! Любви и счастья на долгие годы!", "Берегите друг друга и будьте счастливы!", "Любви, гармонии и прекрасной семейной жизни!"]
+  },
+  graduation: {
+    warm: [
+      "Пусть знания, друзья и воспоминания этого времени станут хорошей опорой для новых больших шагов.",
+      "Желаю смело выбирать свой путь, не бояться перемен и встречать людей, которые помогут расти.",
+      "Пусть впереди будет много возможностей, интересных задач и поводов гордиться собой."
+    ],
+    fun: [
+      "Поздравляю! Домашние задания закончились. Теперь начинаются задания, которые никто не объяснил заранее!",
+      "Диплом получен — можно официально делать умный вид в любой непонятной ситуации!",
+      "Желаю, чтобы взрослая жизнь оказалась интереснее расписания и добрее экзаменаторов!"
+    ],
+    beautiful: [
+      "Сегодня заканчивается одна глава и начинается новая — пусть она будет смелой, яркой и вашей.",
+      "Пусть мечты превращаются в планы, планы — в действия, а действия ведут к любимому делу.",
+      "Желаю идти вперёд с любопытством, уверенностью и открытым взглядом на мир."
+    ],
+    short: ["С выпускным! Вперёд к новым вершинам!", "Больших возможностей и смелых решений!", "Пусть всё самое интересное будет впереди!"]
   }
 };
-
-
-const templates = {
-  celebration: {
-    colors: ["#ff4f9a", "#7c3aed", "#ffad42"],
-    foreground: "#ffffff",
-    panel: "rgba(255,255,255,0.18)",
-    emoji: "🎉",
-    title: "ПРАЗДНИК"
-  },
-  sunrise: {
-    colors: ["#6dc8ff", "#ffe1a6", "#ff8b63"],
-    foreground: "#28324a",
-    panel: "rgba(255,255,255,0.52)",
-    emoji: "☀️",
-    title: "ХОРОШЕГО ДНЯ"
-  },
-  flowers: {
-    colors: ["#fff0f5", "#edb6ce", "#cdb8ff"],
-    foreground: "#5a2948",
-    panel: "rgba(255,255,255,0.62)",
-    emoji: "🌸",
-    title: "С ТЕПЛОМ"
-  },
-  love: {
-    colors: ["#ff5678", "#ff8f70", "#7348c7"],
-    foreground: "#ffffff",
-    panel: "rgba(255,255,255,0.18)",
-    emoji: "❤️",
-    title: "ДЛЯ ТЕБЯ"
-  },
-  night: {
-    colors: ["#10152f", "#392b78", "#6b3fa0"],
-    foreground: "#ffffff",
-    panel: "rgba(255,255,255,0.12)",
-    emoji: "🌙",
-    title: "ДОБРЫХ СНОВ"
-  }
-};
-
 
 document.querySelectorAll(".template-option").forEach((button) => {
   button.addEventListener("click", () => {
@@ -188,21 +229,13 @@ document.querySelectorAll(".template-option").forEach((button) => {
       item.classList.toggle("active", active);
       item.setAttribute("aria-pressed", String(active));
     });
-
-    if (lastGreeting) {
-      renderCard(lastGreeting);
-    }
   });
 });
 
-
 function chooseVariant(items) {
-  if (items.length === 1) {
-    return items[0];
-  }
+  if (items.length === 1) return items[0];
 
   let index;
-
   do {
     index = Math.floor(Math.random() * items.length);
   } while (index === previousTextIndex);
@@ -211,21 +244,21 @@ function chooseVariant(items) {
   return items[index];
 }
 
-
 function buildGreeting() {
   const name = nameInput.value.trim();
-  errorMessage.textContent = "";
-
   const occasion = occasionInput.value;
   const style = styleInput.value;
-  const details = detailsInput.value.trim();
 
   const noNameTitles = {
     birthday: "С днём рождения!",
     morning: "Доброе утро!",
     mother: "Для самой любимой мамы",
     love: "Для тебя",
-    night: "Спокойной ночи"
+    night: "Спокойной ночи",
+    newyear: "С Новым годом!",
+    march8: "С 8 Марта!",
+    wedding: "С днём свадьбы!",
+    graduation: "С выпускным!"
   };
 
   const namedTitles = {
@@ -233,28 +266,53 @@ function buildGreeting() {
     morning: `${name}, доброе утро!`,
     mother: `${name}, это для тебя`,
     love: `${name}, для тебя`,
-    night: `${name}, спокойной ночи`
+    night: `${name}, спокойной ночи`,
+    newyear: `${name}, с Новым годом!`,
+    march8: `${name}, с 8 Марта!`,
+    wedding: `${name}, с днём свадьбы!`,
+    graduation: `${name}, с выпускным!`
   };
-
-  let text = chooseVariant(textVariants[occasion][style]);
-
-  if (details) {
-    text += ` И пусть ${details.toLowerCase()} приносит ещё больше радости.`;
-  }
 
   return {
     name,
     occasion,
     style,
     title: name ? namedTitles[occasion] : noNameTitles[occasion],
-    text
+    text: chooseVariant(textVariants[occasion][style])
   };
 }
 
+function getMaxInitData() {
+  try {
+    if (window.WebApp && typeof window.WebApp.initData === "string") {
+      return window.WebApp.initData;
+    }
+  } catch (error) {
+    console.warn("Не удалось прочитать initData MAX:", error);
+  }
+  return "";
+}
+
+function loadDataImage(imageData) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Не удалось открыть изображение, полученное от AI."));
+    image.src = imageData;
+  });
+}
+
+function drawCoverImage(image) {
+  const scale = Math.max(canvas.width / image.width, canvas.height / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  const x = (canvas.width - width) / 2;
+  const y = (canvas.height - height) / 2;
+  ctx.drawImage(image, x, y, width, height);
+}
 
 function roundedRect(context, x, y, width, height, radius) {
   const r = Math.min(radius, width / 2, height / 2);
-
   context.beginPath();
   context.moveTo(x + r, y);
   context.arcTo(x + width, y, x + width, y + height, r);
@@ -264,73 +322,24 @@ function roundedRect(context, x, y, width, height, radius) {
   context.closePath();
 }
 
-
-function drawBackground(template) {
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-
-  gradient.addColorStop(0, template.colors[0]);
-  gradient.addColorStop(0.56, template.colors[1]);
-  gradient.addColorStop(1, template.colors[2]);
-
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Мягкие декоративные круги
-  const bubbles = [
-    [110, 165, 190, 0.12],
-    [930, 210, 250, 0.10],
-    [870, 1110, 290, 0.10],
-    [120, 1130, 220, 0.08]
-  ];
-
-  bubbles.forEach(([x, y, r, alpha]) => {
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-    ctx.fill();
-  });
-
-  // Мелкие точки
-  for (let i = 0; i < 16; i += 1) {
-    const x = 70 + ((i * 137) % 950);
-    const y = 95 + ((i * 211) % 1120);
-    const radius = 4 + (i % 4) * 3;
-
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${0.22 + (i % 3) * 0.08})`;
-    ctx.fill();
-  }
-}
-
-
 function fitFontSize(text, maxWidth, startSize, minSize, weight = 800) {
   let size = startSize;
-
   while (size > minSize) {
     ctx.font = `${weight} ${size}px Arial, sans-serif`;
-
-    if (ctx.measureText(text).width <= maxWidth) {
-      return size;
-    }
-
+    if (ctx.measureText(text).width <= maxWidth) return size;
     size -= 2;
   }
-
   return minSize;
 }
 
-
 function wrapText(text, maxWidth, font) {
   ctx.font = font;
-
   const words = text.split(/\s+/);
   const lines = [];
   let currentLine = "";
 
   words.forEach((word) => {
     const testLine = currentLine ? `${currentLine} ${word}` : word;
-
     if (ctx.measureText(testLine).width > maxWidth && currentLine) {
       lines.push(currentLine);
       currentLine = word;
@@ -339,115 +348,179 @@ function wrapText(text, maxWidth, font) {
     }
   });
 
-  if (currentLine) {
-    lines.push(currentLine);
-  }
-
+  if (currentLine) lines.push(currentLine);
   return lines;
 }
 
+function fitBodyText(text, maxWidth, maxLines) {
+  for (let size = 43; size >= 31; size -= 2) {
+    const font = `500 ${size}px Arial, sans-serif`;
+    const lines = wrapText(text, maxWidth, font);
+    if (lines.length <= maxLines) return { size, font, lines };
+  }
 
-function renderCard(greeting) {
-  const template = templates[selectedTemplate];
+  const font = "500 31px Arial, sans-serif";
+  return { size: 31, font, lines: wrapText(text, maxWidth, font).slice(0, maxLines) };
+}
 
+function renderCard(greeting, image) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawBackground(template);
+  drawCoverImage(image);
+
+  const topShade = ctx.createLinearGradient(0, 0, 0, 360);
+  topShade.addColorStop(0, "rgba(0,0,0,0.58)");
+  topShade.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = topShade;
+  ctx.fillRect(0, 0, canvas.width, 380);
+
+  const bottomShade = ctx.createLinearGradient(0, 900, 0, canvas.height);
+  bottomShade.addColorStop(0, "rgba(0,0,0,0)");
+  bottomShade.addColorStop(1, "rgba(0,0,0,0.66)");
+  ctx.fillStyle = bottomShade;
+  ctx.fillRect(0, 850, canvas.width, 500);
+
+  ctx.fillStyle = "rgba(8, 8, 18, 0.43)";
+  roundedRect(ctx, 82, 365, 916, 680, 54);
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(255,255,255,0.24)";
+  ctx.lineWidth = 2;
+  roundedRect(ctx, 82, 365, 916, 680, 54);
+  ctx.stroke();
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "rgba(0,0,0,0.35)";
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 4;
 
-  // Верхняя маленькая подпись
-  ctx.fillStyle = template.foreground;
-  ctx.globalAlpha = 0.78;
-  ctx.font = "700 30px Arial, sans-serif";
-  ctx.fillText(template.title, 540, 105);
+  const meta = occasionMeta[greeting.occasion] || occasionMeta.birthday;
+
+  ctx.globalAlpha = 0.9;
+  ctx.font = "700 29px Arial, sans-serif";
+  ctx.fillText(meta.label, 540, 95);
   ctx.globalAlpha = 1;
 
-  // Эмодзи
-  ctx.font = '128px "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
-  ctx.fillText(template.emoji, 540, 235);
+  ctx.font = '108px "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+  ctx.fillText(meta.emoji, 540, 238);
 
-  // Основная полупрозрачная панель
-  ctx.fillStyle = template.panel;
-  roundedRect(ctx, 90, 350, 900, 700, 58);
-  ctx.fill();
+  const titleFontSize = fitFontSize(greeting.title, 760, 70, 44, 800);
+  const titleFont = `800 ${titleFontSize}px Arial, sans-serif`;
+  const titleLines = wrapText(greeting.title, 760, titleFont).slice(0, 2);
+  const titleStartY = titleLines.length === 1 ? 485 : 452;
 
-  // Имя / заголовок
-  const titleFontSize = fitFontSize(greeting.title, 760, 72, 46, 800);
-
-  ctx.fillStyle = template.foreground;
-  ctx.font = `800 ${titleFontSize}px Arial, sans-serif`;
-
-  const titleLines = wrapText(
-    greeting.title,
-    760,
-    `800 ${titleFontSize}px Arial, sans-serif`
-  ).slice(0, 2);
-
-  let titleY = titleLines.length === 1 ? 470 : 445;
-
+  ctx.font = titleFont;
   titleLines.forEach((line, index) => {
-    ctx.fillText(line, 540, titleY + index * (titleFontSize + 12));
+    ctx.fillText(line, 540, titleStartY + index * (titleFontSize + 12));
   });
 
-  // Текст поздравления
-  const bodyFontSize = 42;
-  const bodyFont = `500 ${bodyFontSize}px Arial, sans-serif`;
+  const body = fitBodyText(greeting.text, 730, 7);
+  const bodyStartY = titleLines.length === 1 ? 650 : 670;
+  const lineHeight = body.size * 1.42;
 
-  ctx.font = bodyFont;
-
-  const bodyLines = wrapText(greeting.text, 720, bodyFont).slice(0, 8);
-
-  let bodyY = titleLines.length === 1 ? 620 : 640;
-  const lineHeight = 59;
-
-  bodyLines.forEach((line, index) => {
-    ctx.fillText(line, 540, bodyY + index * lineHeight);
+  ctx.font = body.font;
+  body.lines.forEach((line, index) => {
+    ctx.fillText(line, 540, bodyStartY + index * lineHeight);
   });
 
-  // Нижняя подпись
-  ctx.globalAlpha = 0.86;
-  ctx.font = "600 29px Arial, sans-serif";
-  ctx.fillText("🎁  Создано в «Поздравь»", 540, 1245);
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 2;
+  ctx.globalAlpha = 0.94;
+  ctx.font = "600 28px Arial, sans-serif";
+  ctx.fillText("🎁  Создано в «Поздравь»", 540, 1250);
   ctx.globalAlpha = 1;
+
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
 }
 
+function setGenerating(active, message = "Alice AI ART создаёт изображение…") {
+  isGenerating = active;
+  generateButton.disabled = active;
+  anotherButton.disabled = active;
+  downloadButton.disabled = active;
+  sendMaxButton.disabled = active;
+  generationStatus.textContent = message;
+  generationBox.classList.toggle("hidden", !active);
+}
 
-function generateCard() {
+async function requestAiBackground() {
+  if (API_BASE_URL.includes("YOUR-TIMEWEB-BACKEND")) {
+    throw new Error("Сначала укажите адрес backend Timeweb в app.js.");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/generate-ai-card`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        initData: getMaxInitData(),
+        occasion: occasionInput.value,
+        style: styleInput.value,
+        template: selectedTemplate,
+        name: nameInput.value.trim(),
+        details: detailsInput.value.trim()
+      })
+    });
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || `Ошибка сервера ${response.status}`);
+    }
+
+    if (!result.imageData) {
+      throw new Error("Сервер не вернул изображение.");
+    }
+
+    return result.imageData;
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Генерация заняла слишком много времени. Попробуйте ещё раз.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function generateCard() {
+  if (isGenerating) return;
+
+  errorMessage.textContent = "";
+  shareStatus.textContent = "";
   const greeting = buildGreeting();
 
-  if (!greeting) {
-    return;
+  setGenerating(true);
+
+  try {
+    const imageData = await requestAiBackground();
+    setGenerating(true, "Оформляем открытку…");
+    const image = await loadDataImage(imageData);
+
+    lastGreeting = greeting;
+    lastAiImage = image;
+    renderCard(greeting, image);
+
+    resultSection.classList.remove("hidden");
+    resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    console.error(error);
+    errorMessage.textContent = `Не удалось создать открытку: ${error.message}`;
+  } finally {
+    setGenerating(false);
   }
-
-  lastGreeting = greeting;
-  renderCard(greeting);
-
-  resultSection.classList.remove("hidden");
-
-  resultSection.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
 }
 
-
-function anotherVariant() {
-  if (!lastGreeting) {
-    generateCard();
-    return;
-  }
-
-  const newGreeting = buildGreeting();
-
-  if (!newGreeting) {
-    return;
-  }
-
-  lastGreeting = newGreeting;
-  renderCard(newGreeting);
+async function anotherVariant() {
+  await generateCard();
 }
-
 
 function safeFileName(name) {
   return (name || "otkrytka")
@@ -458,58 +531,38 @@ function safeFileName(name) {
     .slice(0, 40) || "otkrytka";
 }
 
-
 function downloadPNG() {
-  if (!lastGreeting) {
+  if (!lastGreeting || !lastAiImage) {
     shareStatus.textContent = "Сначала создайте открытку.";
     return;
   }
 
   const link = document.createElement("a");
-
   link.download = `pozdrav-${safeFileName(lastGreeting.name)}.png`;
   link.href = canvas.toDataURL("image/png");
   link.click();
-
   shareStatus.textContent = "PNG сохранён на устройство.";
 }
 
-
-function getMaxInitData() {
-  try {
-    if (window.WebApp && typeof window.WebApp.initData === "string") {
-      return window.WebApp.initData;
-    }
-  } catch (error) {
-    console.warn("Не удалось прочитать initData MAX:", error);
-  }
-
-  return "";
-}
-
-
 async function sendToMax() {
-  if (!lastGreeting) {
+  if (!lastGreeting || !lastAiImage) {
     shareStatus.textContent = "Сначала создайте открытку.";
     return;
   }
 
-  if (API_BASE_URL.includes("YOUR-BACKEND")) {
-    shareStatus.textContent = "Сначала укажите адрес backend в app.js.";
+  if (API_BASE_URL.includes("YOUR-TIMEWEB-BACKEND")) {
+    shareStatus.textContent = "Сначала укажите адрес backend Timeweb в app.js.";
     return;
   }
 
   if (!window.WebApp || typeof window.WebApp.shareMaxContent !== "function") {
-    shareStatus.textContent =
-      "Прямая отправка работает внутри MAX. В обычном браузере используйте «Скачать PNG».";
+    shareStatus.textContent = "Отправка работает внутри MAX. В браузере используйте «Скачать PNG».";
     return;
   }
 
   const initData = getMaxInitData();
-
   if (!initData) {
-    shareStatus.textContent =
-      "MAX не передал данные запуска. Откройте приложение через своего бота.";
+    shareStatus.textContent = "MAX не передал данные запуска. Откройте приложение через своего бота.";
     return;
   }
 
@@ -523,26 +576,16 @@ async function sendToMax() {
       body: JSON.stringify({
         initData,
         imageData: canvas.toDataURL("image/png"),
-        caption: "🎁 Ваша открытка из «Поздравь»"
+        caption: "🎁 Ваша AI-открытка из «Поздравь»"
       })
     });
 
     const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(result.error || `Ошибка сервера ${response.status}`);
-    }
-
-    if (!result.mid) {
-      throw new Error("Сервер не вернул mid сообщения.");
-    }
+    if (!response.ok) throw new Error(result.error || `Ошибка сервера ${response.status}`);
+    if (!result.mid) throw new Error("Сервер не вернул mid сообщения.");
 
     shareStatus.textContent = "Выберите, кому отправить открытку…";
-
-    window.WebApp.shareMaxContent({
-      mid: result.mid,
-      chatType: "DIALOG"
-    });
+    window.WebApp.shareMaxContent({ mid: result.mid, chatType: "DIALOG" });
   } catch (error) {
     console.error(error);
     shareStatus.textContent = `Не удалось отправить: ${error.message}`;
@@ -551,16 +594,13 @@ async function sendToMax() {
   }
 }
 
-
 generateButton.addEventListener("click", generateCard);
 anotherButton.addEventListener("click", anotherVariant);
 downloadButton.addEventListener("click", downloadPNG);
 sendMaxButton.addEventListener("click", sendToMax);
 
 nameInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    generateCard();
-  }
+  if (event.key === "Enter") generateCard();
 });
 
 try {

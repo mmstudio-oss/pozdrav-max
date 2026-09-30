@@ -4,22 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#7c3aed" />
-  <title>Поздравь</title>
+  <title>Поздравь — AI-открытки</title>
 
-  <!-- MAX Bridge. На этапе 2 он подключён заранее,
-       прямую отправку PNG в MAX добавим на этапе 3. -->
   <script src="https://st.max.ru/js/max-web-app.js"></script>
-
   <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
   <main class="app">
     <header class="header">
       <div class="logo" aria-hidden="true">🎁</div>
       <div>
         <h1>Поздравь</h1>
-        <p>Создайте персональную открытку за несколько секунд</p>
+        <p>Уникальные открытки с фоном от Alice AI ART 3.0</p>
       </div>
     </header>
 
@@ -27,8 +23,8 @@
       <div class="section-title">
         <span class="step">1</span>
         <div>
-          <h2>Данные открытки</h2>
-          <p>Укажите повод, имя и стиль поздравления.</p>
+          <h2>Кому и по какому поводу</h2>
+          <p>Имя и описание человека можно не заполнять.</p>
         </div>
       </div>
 
@@ -39,6 +35,10 @@
         <option value="mother">🌹 Для мамы</option>
         <option value="love">❤️ Любимому человеку</option>
         <option value="night">🌙 Спокойной ночи</option>
+        <option value="newyear">🎄 Новый год</option>
+        <option value="march8">💐 8 Марта</option>
+        <option value="wedding">💍 Свадьба</option>
+        <option value="graduation">🎓 Выпускной</option>
       </select>
 
       <label for="name">Имя <span class="optional">(необязательно)</span></label>
@@ -46,11 +46,11 @@
         id="name"
         type="text"
         maxlength="30"
-        placeholder="Можно оставить пустым"
+        placeholder="Например: Александр"
         autocomplete="off"
       />
 
-      <label for="style">Стиль текста</label>
+      <label for="style">Стиль поздравления</label>
       <select id="style">
         <option value="warm">Душевно</option>
         <option value="fun">С юмором</option>
@@ -62,8 +62,9 @@
       <textarea
         id="details"
         maxlength="100"
-        placeholder="Например: любит путешествия, кофе и хорошие шутки"
+        placeholder="Например: любит море, путешествия и кофе"
       ></textarea>
+      <p class="hint">Эти детали помогают AI подобрать атмосферу и визуальные мотивы.</p>
 
       <p id="errorMessage" class="error" aria-live="polite"></p>
     </section>
@@ -72,41 +73,46 @@
       <div class="section-title">
         <span class="step">2</span>
         <div>
-          <h2>Выберите оформление</h2>
-          <p>Шаблон можно менять сколько угодно.</p>
+          <h2>Стиль AI-фона</h2>
+          <p>Alice AI ART создаст новое изображение при каждой генерации.</p>
         </div>
       </div>
 
       <div class="template-grid" id="templateGrid">
         <button class="template-option active" type="button" data-template="celebration" aria-pressed="true">
-          <span class="template-preview celebration-preview">🎉</span>
+          <span class="template-preview celebration-preview">✨</span>
           <span>Праздник</span>
         </button>
 
         <button class="template-option" type="button" data-template="sunrise" aria-pressed="false">
           <span class="template-preview sunrise-preview">☀️</span>
-          <span>Рассвет</span>
+          <span>Светлый</span>
         </button>
 
         <button class="template-option" type="button" data-template="flowers" aria-pressed="false">
           <span class="template-preview flowers-preview">🌸</span>
-          <span>Цветы</span>
+          <span>Нежный</span>
         </button>
 
         <button class="template-option" type="button" data-template="love" aria-pressed="false">
           <span class="template-preview love-preview">❤️</span>
-          <span>Любовь</span>
+          <span>Романтика</span>
         </button>
 
         <button class="template-option" type="button" data-template="night" aria-pressed="false">
           <span class="template-preview night-preview">🌙</span>
-          <span>Ночь</span>
+          <span>Кино</span>
         </button>
       </div>
 
       <button id="generateButton" class="button button-primary">
-        ✨ Создать открытку
+        🤖 Создать AI-открытку
       </button>
+
+      <div id="generationBox" class="generation-box hidden" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="generationStatus">Alice AI ART создаёт изображение…</span>
+      </div>
     </section>
 
     <section id="resultSection" class="card hidden">
@@ -114,7 +120,7 @@
         <span class="step">3</span>
         <div>
           <h2>Готовая открытка</h2>
-          <p>PNG создаётся прямо на вашем устройстве.</p>
+          <p>AI создаёт фон, а приложение аккуратно накладывает русский текст.</p>
         </div>
       </div>
 
@@ -127,6 +133,10 @@
         ></canvas>
       </div>
 
+      <button id="anotherButton" class="button button-secondary">
+        🔄 Создать другой вариант
+      </button>
+
       <div class="action-grid">
         <button id="downloadButton" class="button button-primary">
           ⬇️ Скачать PNG
@@ -137,20 +147,16 @@
         </button>
       </div>
 
-      <button id="anotherButton" class="button button-secondary">
-        🔄 Другой вариант текста
-      </button>
-
       <p id="shareStatus" class="status" aria-live="polite"></p>
 
       <div class="info-box">
-        <strong>Этап 3: прямая отправка в MAX</strong>
-        <p>PNG отправляется через ваш backend и MAX Bot API, после чего откроется выбор чата.</p>
+        <strong>AI-фон без ошибок в тексте</strong>
+        <p>Alice AI ART генерирует изображение без надписей. Имя и поздравление добавляются поверх картинки самим приложением.</p>
       </div>
     </section>
 
     <footer>
-      MVP «Поздравь» · Этап 2
+      «Поздравь» · Alice AI ART 3.0 · MAX
     </footer>
   </main>
 
