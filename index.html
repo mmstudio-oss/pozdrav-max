@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#7c3aed" />
+
+  <title>Поздравь</title>
+
+  <!-- MAX Bridge -->
+  <script src="https://st.max.ru/js/max-web-app.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="logo">🎁</div>
+
+      <div>
+        <h1>Поздравь</h1>
+        <p>Персональное поздравление за несколько секунд</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <label for="occasion">Повод</label>
+
+      <select id="occasion">
+        <option value="birthday">🎂 День рождения</option>
+        <option value="morning">☀️ Доброе утро</option>
+        <option value="mother">🌹 Для мамы</option>
+        <option value="love">❤️ Любимому человеку</option>
+        <option value="night">🌙 Спокойной ночи</option>
+      </select>
+
+      <label for="name">Имя</label>
+
+      <input
+        id="name"
+        type="text"
+        maxlength="30"
+        placeholder="Например: Александр"
+        autocomplete="off"
+      />
+
+      <label for="style">Стиль</label>
+
+      <select id="style">
+        <option value="warm">Душевно</option>
+        <option value="fun">С юмором</option>
+        <option value="beautiful">Красиво</option>
+        <option value="short">Коротко</option>
+      </select>
+
+      <label for="details">Пара слов о человеке</label>
+
+      <textarea
+        id="details"
+        maxlength="120"
+        placeholder="Например: любит путешествия, кофе и хорошие шутки"
+      ></textarea>
+
+      <button id="generateButton" class="button button-primary">
+        ✨ Создать поздравление
+      </button>
+
+      <p id="errorMessage" class="error" aria-live="polite"></p>
+    </section>
+
+    <section id="resultSection" class="card result hidden">
+      <div class="greeting-preview">
+        <div class="preview-icon">🎉</div>
+
+        <h2 id="greetingTitle"></h2>
+
+        <p id="greetingText"></p>
+
+        <small>Создано в «Поздравь»</small>
+      </div>
+
+      <button id="shareButton" class="button button-primary">
+        📨 Отправить в MAX
+      </button>
+
+      <button id="anotherButton" class="button button-secondary">
+        🔄 Другой вариант
+      </button>
+
+      <button id="editButton" class="button button-secondary">
+        ✏️ Изменить данные
+      </button>
+
+      <p id="shareStatus" class="status" aria-live="polite"></p>
+    </section>
+
+    <footer>
+      MVP мини-приложения «Поздравь»
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
