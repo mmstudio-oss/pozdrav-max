@@ -1,6 +1,6 @@
 // ВАЖНО: замените на технический HTTPS-адрес вашего backend в Timeweb.
 // Без /health и без завершающего слеша.
-const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
+const API_BASE_URL = "https://mmstudio-oss-pozdrav-max-5bd2.twc1.net";
 
 const occasionInput = document.getElementById("occasion");
 const nameInput = document.getElementById("name");
