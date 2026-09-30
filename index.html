@@ -41,12 +41,12 @@
         <option value="night">🌙 Спокойной ночи</option>
       </select>
 
-      <label for="name">Имя</label>
+      <label for="name">Имя <span class="optional">(необязательно)</span></label>
       <input
         id="name"
         type="text"
         maxlength="30"
-        placeholder="Например: Александр"
+        placeholder="Можно оставить пустым"
         autocomplete="off"
       />
 
@@ -132,8 +132,8 @@
           ⬇️ Скачать PNG
         </button>
 
-        <button id="shareFileButton" class="button button-secondary">
-          ↗️ Поделиться PNG
+        <button id="sendMaxButton" class="button button-primary">
+          📨 Отправить в MAX
         </button>
       </div>
 
@@ -144,11 +144,8 @@
       <p id="shareStatus" class="status" aria-live="polite"></p>
 
       <div class="info-box">
-        <strong>Отправка именно изображения в MAX</strong>
-        <p>
-          На этом этапе PNG уже создаётся. Прямая кнопка «Отправить изображение в MAX»
-          появится на этапе 3, когда добавим сервер и MAX Bot API.
-        </p>
+        <strong>Этап 3: прямая отправка в MAX</strong>
+        <p>PNG отправляется через ваш backend и MAX Bot API, после чего откроется выбор чата.</p>
       </div>
     </section>
 

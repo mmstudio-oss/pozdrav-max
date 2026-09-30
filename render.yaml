@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pozdrav-max-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: INIT_DATA_MAX_AGE_SECONDS
+        value: "86400"
+      - key: NODE_VERSION
+        value: "20"

@@ -1,3 +1,5 @@
+const API_BASE_URL = "https://YOUR-BACKEND.onrender.com";
+
 const occasionInput = document.getElementById("occasion");
 const nameInput = document.getElementById("name");
 const styleInput = document.getElementById("style");
@@ -6,7 +8,7 @@ const detailsInput = document.getElementById("details");
 const generateButton = document.getElementById("generateButton");
 const anotherButton = document.getElementById("anotherButton");
 const downloadButton = document.getElementById("downloadButton");
-const shareFileButton = document.getElementById("shareFileButton");
+const sendMaxButton = document.getElementById("sendMaxButton");
 
 const resultSection = document.getElementById("resultSection");
 const errorMessage = document.getElementById("errorMessage");
@@ -212,20 +214,21 @@ function chooseVariant(items) {
 
 function buildGreeting() {
   const name = nameInput.value.trim();
-
-  if (!name) {
-    errorMessage.textContent = "Введите имя получателя.";
-    nameInput.focus();
-    return null;
-  }
-
   errorMessage.textContent = "";
 
   const occasion = occasionInput.value;
   const style = styleInput.value;
   const details = detailsInput.value.trim();
 
-  const titles = {
+  const noNameTitles = {
+    birthday: "С днём рождения!",
+    morning: "Доброе утро!",
+    mother: "Для самой любимой мамы",
+    love: "Для тебя",
+    night: "Спокойной ночи"
+  };
+
+  const namedTitles = {
     birthday: `${name}, с днём рождения!`,
     morning: `${name}, доброе утро!`,
     mother: `${name}, это для тебя`,
@@ -243,7 +246,7 @@ function buildGreeting() {
     name,
     occasion,
     style,
-    title: titles[occasion],
+    title: name ? namedTitles[occasion] : noNameTitles[occasion],
     text
   };
 }
@@ -447,7 +450,7 @@ function anotherVariant() {
 
 
 function safeFileName(name) {
-  return name
+  return (name || "otkrytka")
     .trim()
     .toLowerCase()
     .replace(/[^a-zа-яё0-9]+/gi, "-")
@@ -472,62 +475,79 @@ function downloadPNG() {
 }
 
 
-async function canvasToFile() {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Не удалось создать PNG."));
-        return;
-      }
+function getMaxInitData() {
+  try {
+    if (window.WebApp && typeof window.WebApp.initData === "string") {
+      return window.WebApp.initData;
+    }
+  } catch (error) {
+    console.warn("Не удалось прочитать initData MAX:", error);
+  }
 
-      resolve(
-        new File(
-          [blob],
-          `pozdrav-${safeFileName(lastGreeting?.name || "otkrytka")}.png`,
-          { type: "image/png" }
-        )
-      );
-    }, "image/png");
-  });
+  return "";
 }
 
 
-async function sharePNG() {
+async function sendToMax() {
   if (!lastGreeting) {
     shareStatus.textContent = "Сначала создайте открытку.";
     return;
   }
 
+  if (API_BASE_URL.includes("YOUR-BACKEND")) {
+    shareStatus.textContent = "Сначала укажите адрес backend в app.js.";
+    return;
+  }
+
+  if (!window.WebApp || typeof window.WebApp.shareMaxContent !== "function") {
+    shareStatus.textContent =
+      "Прямая отправка работает внутри MAX. В обычном браузере используйте «Скачать PNG».";
+    return;
+  }
+
+  const initData = getMaxInitData();
+
+  if (!initData) {
+    shareStatus.textContent =
+      "MAX не передал данные запуска. Откройте приложение через своего бота.";
+    return;
+  }
+
+  sendMaxButton.disabled = true;
+  shareStatus.textContent = "Загружаем открытку в MAX…";
+
   try {
-    const file = await canvasToFile();
+    const response = await fetch(`${API_BASE_URL}/api/send-card`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData,
+        imageData: canvas.toDataURL("image/png"),
+        caption: "🎁 Ваша открытка из «Поздравь»"
+      })
+    });
 
-    if (
-      navigator.share &&
-      navigator.canShare &&
-      navigator.canShare({ files: [file] })
-    ) {
-      await navigator.share({
-        files: [file],
-        title: "Открытка «Поздравь»",
-        text: "Персональная открытка"
-      });
+    const result = await response.json().catch(() => ({}));
 
-      shareStatus.textContent = "Открытка передана в меню «Поделиться».";
-      return;
+    if (!response.ok) {
+      throw new Error(result.error || `Ошибка сервера ${response.status}`);
     }
 
-    shareStatus.textContent =
-      "На этом устройстве передача PNG через системное меню недоступна. Нажмите «Скачать PNG».";
+    if (!result.mid) {
+      throw new Error("Сервер не вернул mid сообщения.");
+    }
+
+    shareStatus.textContent = "Выберите, кому отправить открытку…";
+
+    window.WebApp.shareMaxContent({
+      mid: result.mid,
+      chatType: "DIALOG"
+    });
   } catch (error) {
-    if (error.name === "AbortError") {
-      shareStatus.textContent = "Отправка отменена.";
-      return;
-    }
-
     console.error(error);
-
-    shareStatus.textContent =
-      "Не удалось открыть меню отправки. Можно сохранить открытку кнопкой «Скачать PNG».";
+    shareStatus.textContent = `Не удалось отправить: ${error.message}`;
+  } finally {
+    sendMaxButton.disabled = false;
   }
 }
 
@@ -535,7 +555,7 @@ async function sharePNG() {
 generateButton.addEventListener("click", generateCard);
 anotherButton.addEventListener("click", anotherVariant);
 downloadButton.addEventListener("click", downloadPNG);
-shareFileButton.addEventListener("click", sharePNG);
+sendMaxButton.addEventListener("click", sendToMax);
 
 nameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
