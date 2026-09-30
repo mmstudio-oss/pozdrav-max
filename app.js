@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://YOUR-BACKEND.onrender.com";
+const API_BASE_URL = "https://mmstudio-oss-pozdrav-max-5bd2.twc1.net";
 
 const occasionInput = document.getElementById("occasion");
 const nameInput = document.getElementById("name");
