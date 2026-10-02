@@ -2,7 +2,7 @@
   После публикации backend на Timeweb вставьте его адрес ниже, например:
   const API_BASE_URL = "https://pozdrav-max-api-xxxx.twc1.net";
 */
-const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
+const API_BASE_URL = "https://mmstudio-oss-pozdrav-max-5bd2.twc1.net";
 
 const occasionInput = document.getElementById("occasion");
 const visualStyleInput = document.getElementById("visualStyle");
