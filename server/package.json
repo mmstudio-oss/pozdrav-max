@@ -3,13 +3,12 @@
   "version": "2.0.0",
   "private": true,
   "type": "module",
-  "description": "Backend для Поздравь: MAX + Yandex AI Studio Alice AI ART 3.0",
+  "description": "Backend для мини-приложения Поздравь с Yandex AI Studio",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server.js",
-    "check": "node --check server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
