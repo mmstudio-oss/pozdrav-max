@@ -3,19 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#7c3aed" />
-  <title>Поздравь — AI-открытки</title>
+  <meta name="theme-color" content="#6f4ef6" />
+  <title>Поздравь — AI открытки</title>
 
   <script src="https://st.max.ru/js/max-web-app.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=Prata&display=swap"
+    rel="stylesheet"
+  />
+
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="app">
     <header class="header">
       <div class="logo" aria-hidden="true">🎁</div>
+
       <div>
         <h1>Поздравь</h1>
-        <p>Уникальные открытки с фоном от Alice AI ART 3.0</p>
+        <p>AI-открытки через Yandex AI Studio + Alice AI ART 3.0</p>
       </div>
     </header>
 
@@ -23,22 +32,25 @@
       <div class="section-title">
         <span class="step">1</span>
         <div>
-          <h2>Кому и по какому поводу</h2>
-          <p>Имя и описание человека можно не заполнять.</p>
+          <h2>Что создаём</h2>
+          <p>Имя необязательно. Чем лучше описание, тем красивее фон.</p>
         </div>
       </div>
 
       <label for="occasion">Повод</label>
       <select id="occasion">
         <option value="birthday">🎂 День рождения</option>
-        <option value="morning">☀️ Доброе утро</option>
         <option value="mother">🌹 Для мамы</option>
         <option value="love">❤️ Любимому человеку</option>
+        <option value="morning">☀️ Доброе утро</option>
         <option value="night">🌙 Спокойной ночи</option>
-        <option value="newyear">🎄 Новый год</option>
-        <option value="march8">💐 8 Марта</option>
-        <option value="wedding">💍 Свадьба</option>
-        <option value="graduation">🎓 Выпускной</option>
+      </select>
+
+      <label for="visualStyle">Визуальный стиль</label>
+      <select id="visualStyle">
+        <option value="premium">✨ Premium</option>
+        <option value="soft">🌸 Soft</option>
+        <option value="modern">🖤 Modern</option>
       </select>
 
       <label for="name">Имя <span class="optional">(необязательно)</span></label>
@@ -50,77 +62,26 @@
         autocomplete="off"
       />
 
-      <label for="style">Стиль поздравления</label>
-      <select id="style">
-        <option value="warm">Душевно</option>
-        <option value="fun">С юмором</option>
-        <option value="beautiful">Красиво</option>
-        <option value="short">Коротко</option>
-      </select>
-
       <label for="details">Пара слов о человеке <span class="optional">(необязательно)</span></label>
       <textarea
         id="details"
-        maxlength="100"
+        maxlength="140"
         placeholder="Например: любит море, путешествия и кофе"
       ></textarea>
-      <p class="hint">Эти детали помогают AI подобрать атмосферу и визуальные мотивы.</p>
-
-      <p id="errorMessage" class="error" aria-live="polite"></p>
-    </section>
-
-    <section class="card">
-      <div class="section-title">
-        <span class="step">2</span>
-        <div>
-          <h2>Стиль AI-фона</h2>
-          <p>Alice AI ART создаст новое изображение при каждой генерации.</p>
-        </div>
-      </div>
-
-      <div class="template-grid" id="templateGrid">
-        <button class="template-option active" type="button" data-template="celebration" aria-pressed="true">
-          <span class="template-preview celebration-preview">✨</span>
-          <span>Праздник</span>
-        </button>
-
-        <button class="template-option" type="button" data-template="sunrise" aria-pressed="false">
-          <span class="template-preview sunrise-preview">☀️</span>
-          <span>Светлый</span>
-        </button>
-
-        <button class="template-option" type="button" data-template="flowers" aria-pressed="false">
-          <span class="template-preview flowers-preview">🌸</span>
-          <span>Нежный</span>
-        </button>
-
-        <button class="template-option" type="button" data-template="love" aria-pressed="false">
-          <span class="template-preview love-preview">❤️</span>
-          <span>Романтика</span>
-        </button>
-
-        <button class="template-option" type="button" data-template="night" aria-pressed="false">
-          <span class="template-preview night-preview">🌙</span>
-          <span>Кино</span>
-        </button>
-      </div>
 
       <button id="generateButton" class="button button-primary">
-        🤖 Создать AI-открытку
+        ✨ Создать AI-открытку
       </button>
 
-      <div id="generationBox" class="generation-box hidden" aria-live="polite">
-        <span class="spinner" aria-hidden="true"></span>
-        <span id="generationStatus">Alice AI ART создаёт изображение…</span>
-      </div>
+      <p id="statusMessage" class="status" aria-live="polite"></p>
     </section>
 
     <section id="resultSection" class="card hidden">
       <div class="section-title">
-        <span class="step">3</span>
+        <span class="step">2</span>
         <div>
           <h2>Готовая открытка</h2>
-          <p>AI создаёт фон, а приложение аккуратно накладывает русский текст.</p>
+          <p>Текст теперь рисуется без подложки — красивой типографикой прямо поверх изображения.</p>
         </div>
       </div>
 
@@ -129,34 +90,35 @@
           id="cardCanvas"
           width="1080"
           height="1350"
-          aria-label="Предпросмотр готовой открытки"
+          aria-label="Предпросмотр AI-открытки"
         ></canvas>
       </div>
 
-      <button id="anotherButton" class="button button-secondary">
-        🔄 Создать другой вариант
-      </button>
-
-      <div class="action-grid">
-        <button id="downloadButton" class="button button-primary">
-          ⬇️ Скачать PNG
+      <div class="result-actions">
+        <button id="newVariantButton" class="button button-secondary">
+          🔄 Новый AI-вариант
         </button>
 
-        <button id="sendMaxButton" class="button button-primary">
-          📨 Отправить в MAX
+        <button id="downloadButton" class="button button-secondary">
+          ⬇️ Скачать PNG
         </button>
       </div>
 
-      <p id="shareStatus" class="status" aria-live="polite"></p>
+      <button id="sendMaxButton" class="button button-max">
+        📨 Отправить в MAX
+      </button>
 
-      <div class="info-box">
-        <strong>AI-фон без ошибок в тексте</strong>
-        <p>Alice AI ART генерирует изображение без надписей. Имя и поздравление добавляются поверх картинки самим приложением.</p>
+      <div class="tip-box">
+        <strong>Совет</strong>
+        <p>
+          Если фон выглядит слишком перегруженным — оставь описание короче
+          и попробуй стиль <strong>Premium</strong> или <strong>Soft</strong>.
+        </p>
       </div>
     </section>
 
     <footer>
-      «Поздравь» · Alice AI ART 3.0 · MAX
+      Поздравь · Yandex AI Studio · Alice AI ART 3.0 · v2
     </footer>
   </main>
 
