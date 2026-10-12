@@ -1,9 +1,9 @@
 {
   "name": "pozdrav-max-api",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "Backend для мини-приложения Поздравь с Yandex AI Studio",
+  "description": "Backend для Поздравь v3: AI + база готовых фонов",
   "engines": {
     "node": ">=20"
   },
