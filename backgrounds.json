@@ -1,0 +1,72 @@
+{
+  "birthday": {
+    "premium": [
+      "assets/backgrounds/birthday-premium-1.jpg",
+      "assets/backgrounds/birthday-premium-2.jpg"
+    ],
+    "soft": [
+      "assets/backgrounds/birthday-soft-1.jpg",
+      "assets/backgrounds/birthday-soft-2.jpg"
+    ],
+    "modern": [
+      "assets/backgrounds/birthday-modern-1.jpg",
+      "assets/backgrounds/birthday-modern-2.jpg"
+    ]
+  },
+  "mother": {
+    "premium": [
+      "assets/backgrounds/mother-premium-1.jpg",
+      "assets/backgrounds/mother-premium-2.jpg"
+    ],
+    "soft": [
+      "assets/backgrounds/mother-soft-1.jpg",
+      "assets/backgrounds/mother-soft-2.jpg"
+    ],
+    "modern": [
+      "assets/backgrounds/mother-modern-1.jpg",
+      "assets/backgrounds/mother-modern-2.jpg"
+    ]
+  },
+  "love": {
+    "premium": [
+      "assets/backgrounds/love-premium-1.jpg",
+      "assets/backgrounds/love-premium-2.jpg"
+    ],
+    "soft": [
+      "assets/backgrounds/love-soft-1.jpg",
+      "assets/backgrounds/love-soft-2.jpg"
+    ],
+    "modern": [
+      "assets/backgrounds/love-modern-1.jpg",
+      "assets/backgrounds/love-modern-2.jpg"
+    ]
+  },
+  "morning": {
+    "premium": [
+      "assets/backgrounds/morning-premium-1.jpg",
+      "assets/backgrounds/morning-premium-2.jpg"
+    ],
+    "soft": [
+      "assets/backgrounds/morning-soft-1.jpg",
+      "assets/backgrounds/morning-soft-2.jpg"
+    ],
+    "modern": [
+      "assets/backgrounds/morning-modern-1.jpg",
+      "assets/backgrounds/morning-modern-2.jpg"
+    ]
+  },
+  "night": {
+    "premium": [
+      "assets/backgrounds/night-premium-1.jpg",
+      "assets/backgrounds/night-premium-2.jpg"
+    ],
+    "soft": [
+      "assets/backgrounds/night-soft-1.jpg",
+      "assets/backgrounds/night-soft-2.jpg"
+    ],
+    "modern": [
+      "assets/backgrounds/night-modern-1.jpg",
+      "assets/backgrounds/night-modern-2.jpg"
+    ]
+  }
+}

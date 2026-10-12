@@ -1,28 +1,19 @@
-/*
-  После публикации backend на Timeweb вставьте его адрес ниже, например:
-  const API_BASE_URL = "https://pozdrav-max-api-xxxx.twc1.net";
-*/
-const API_BASE_URL = "https://mmstudio-oss-pozdrav-max-5bd2.twc1.net";
+const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
 
 const occasionInput = document.getElementById("occasion");
 const visualStyleInput = document.getElementById("visualStyle");
+const sourceModeInput = document.getElementById("sourceMode");
+const variantCountInput = document.getElementById("variantCount");
 const nameInput = document.getElementById("name");
 const detailsInput = document.getElementById("details");
-
 const generateButton = document.getElementById("generateButton");
-const newVariantButton = document.getElementById("newVariantButton");
-const downloadButton = document.getElementById("downloadButton");
-const sendMaxButton = document.getElementById("sendMaxButton");
-
 const statusMessage = document.getElementById("statusMessage");
-const resultSection = document.getElementById("resultSection");
+const resultsSection = document.getElementById("resultsSection");
+const resultsGrid = document.getElementById("resultsGrid");
+const variantTemplate = document.getElementById("variantTemplate");
 
-const canvas = document.getElementById("cardCanvas");
-const ctx = canvas.getContext("2d");
-
-let generatedImage = null;
-let lastImageDataUrl = "";
-let lastGreeting = null;
+let backgroundsManifest = null;
+let currentCards = [];
 let previousTextIndex = -1;
 
 const textVariants = {
@@ -43,7 +34,6 @@ const textVariants = {
       "Пусть всё задуманное складывается красиво, вовремя и именно так, как хочется."
     ]
   },
-
   mother: {
     premium: [
       "Спасибо за твою любовь, доброту и тепло. Пусть в жизни будет как можно больше радости, спокойствия и красивых дней.",
@@ -61,7 +51,6 @@ const textVariants = {
       "Пусть всё самое доброе и важное приходит к тебе вовремя."
     ]
   },
-
   love: {
     premium: [
       "С тобой даже самые обычные дни становятся особенными. Спасибо, что ты есть.",
@@ -79,7 +68,6 @@ const textVariants = {
       "Спасибо, что делаешь мою жизнь лучше просто тем, что ты рядом."
     ]
   },
-
   morning: {
     premium: [
       "Пусть это утро начнётся красиво, а день принесёт хорошие новости и приятные встречи.",
@@ -97,7 +85,6 @@ const textVariants = {
       "Пусть сегодня всё складывается красиво и без лишней суеты."
     ]
   },
-
   night: {
     premium: [
       "Пусть ночь будет тихой, красивой и спокойной, а утро начнётся с хорошего настроения.",
@@ -149,22 +136,33 @@ function setStatus(text, isError = false) {
   statusMessage.classList.toggle("error", isError);
 }
 
+function backendConfigured() {
+  return !API_BASE_URL.includes("YOUR-TIMEWEB-BACKEND");
+}
+
+function getMaxInitData() {
+  try {
+    if (window.WebApp && typeof window.WebApp.initData === "string") {
+      return window.WebApp.initData;
+    }
+  } catch (error) {
+    console.warn("Не удалось получить initData:", error);
+  }
+  return "";
+}
+
 function chooseVariant(items) {
   if (items.length === 1) return items[0];
-
   let index;
   do {
     index = Math.floor(Math.random() * items.length);
   } while (index === previousTextIndex);
-
   previousTextIndex = index;
   return items[index];
 }
 
 function titleFor(occasion, name) {
-  const hasName = Boolean(name);
-
-  if (!hasName) {
+  if (!name) {
     return {
       birthday: "С днём рождения!",
       mother: "Для самой любимой мамы",
@@ -173,7 +171,6 @@ function titleFor(occasion, name) {
       night: "Спокойной ночи"
     }[occasion];
   }
-
   return {
     birthday: `${name}, с днём рождения!`,
     mother: `${name}, это для тебя`,
@@ -188,44 +185,71 @@ function buildGreeting() {
   const visualStyle = visualStyleInput.value;
   const name = nameInput.value.trim();
   const details = detailsInput.value.trim();
-
   let text = chooseVariant(textVariants[occasion][visualStyle]);
-
   if (details) {
     text += ` Пусть всё, что тебе дорого — ${details.toLowerCase()} — приносит ещё больше радости.`;
   }
-
-  return {
-    occasion,
-    visualStyle,
-    name,
-    details,
-    title: titleFor(occasion, name),
-    text
-  };
+  return { occasion, visualStyle, name, details, title: titleFor(occasion, name), text };
 }
 
-function backendConfigured() {
-  return !API_BASE_URL.includes("YOUR-TIMEWEB-BACKEND");
+async function loadBackgroundManifest() {
+  if (backgroundsManifest) return backgroundsManifest;
+  const response = await fetch("backgrounds.json");
+  if (!response.ok) throw new Error("Не удалось загрузить базу фонов.");
+  backgroundsManifest = await response.json();
+  return backgroundsManifest;
 }
 
-function getMaxInitData() {
-  try {
-    if (window.WebApp && typeof window.WebApp.initData === "string") {
-      return window.WebApp.initData;
-    }
-  } catch (error) {
-    console.warn("Не удалось получить initData:", error);
+function pickUniqueRandom(items, count) {
+  const pool = [...items];
+  const out = [];
+  while (pool.length && out.length < count) {
+    const i = Math.floor(Math.random() * pool.length);
+    out.push(pool.splice(i, 1)[0]);
   }
+  while (out.length < count && items.length) {
+    out.push(items[Math.floor(Math.random() * items.length)]);
+  }
+  return out;
+}
 
-  return "";
+async function getLibraryVariants(occasion, visualStyle, count) {
+  const manifest = await loadBackgroundManifest();
+  const items = manifest?.[occasion]?.[visualStyle] || [];
+  if (!items.length) throw new Error("Для этой категории пока нет готовых фонов.");
+  return pickUniqueRandom(items, count).map((src) => ({ imageUrl: src, sourceLabel: "База" }));
+}
+
+async function getAIVariants(greeting, count) {
+  if (!backendConfigured()) {
+    throw new Error("Сначала вставьте адрес backend Timeweb в app.js.");
+  }
+  const response = await fetch(`${API_BASE_URL}/api/generate-ai-cards`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      initData: getMaxInitData(),
+      occasion: greeting.occasion,
+      visualStyle: greeting.visualStyle,
+      recipientName: greeting.name,
+      details: greeting.details,
+      variantCount: count
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error || `Ошибка сервера ${response.status}`);
+  }
+  if (!Array.isArray(result.images) || !result.images.length) {
+    throw new Error("Сервер не вернул варианты изображений.");
+  }
+  return result.images.map((item) => ({ imageData: item.imageData, sourceLabel: "AI" }));
 }
 
 function wrapText(context, text, maxWidth) {
   const words = text.split(/\s+/);
   const lines = [];
   let current = "";
-
   words.forEach((word) => {
     const candidate = current ? `${current} ${word}` : word;
     if (context.measureText(candidate).width > maxWidth && current) {
@@ -235,32 +259,24 @@ function wrapText(context, text, maxWidth) {
       current = candidate;
     }
   });
-
   if (current) lines.push(current);
   return lines;
 }
 
 function fitFontSize(context, text, maxWidth, startSize, minSize, family, weight = 700) {
   let size = startSize;
-
   while (size > minSize) {
     context.font = `${weight} ${size}px ${family}`;
     if (context.measureText(text).width <= maxWidth) return size;
     size -= 2;
   }
-
   return minSize;
 }
 
-function drawImageCover(img) {
+function drawImageCover(ctx, canvas, img) {
   const canvasRatio = canvas.width / canvas.height;
   const imageRatio = img.width / img.height;
-
-  let sx = 0;
-  let sy = 0;
-  let sw = img.width;
-  let sh = img.height;
-
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
   if (imageRatio > canvasRatio) {
     sw = img.height * canvasRatio;
     sx = (img.width - sw) / 2;
@@ -268,31 +284,26 @@ function drawImageCover(img) {
     sh = img.width / canvasRatio;
     sy = (img.height - sh) / 2;
   }
-
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 }
 
-function drawOverlay(styleKey) {
+function drawOverlay(ctx, canvas, styleKey) {
   const top = ctx.createLinearGradient(0, 0, 0, canvas.height);
   top.addColorStop(0, "rgba(0,0,0,0.02)");
   top.addColorStop(0.38, "rgba(0,0,0,0.08)");
   top.addColorStop(0.70, "rgba(0,0,0,0.18)");
   top.addColorStop(1, styleKey === "soft" ? "rgba(43,28,30,0.46)" : "rgba(8,8,16,0.54)");
-
   ctx.fillStyle = top;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const radial = ctx.createRadialGradient(
-    canvas.width * 0.5, canvas.height * 0.22, 40,
-    canvas.width * 0.5, canvas.height * 0.22, canvas.width * 0.75
-  );
+  const radial = ctx.createRadialGradient(canvas.width * 0.5, canvas.height * 0.22, 40, canvas.width * 0.5, canvas.height * 0.22, canvas.width * 0.75);
   radial.addColorStop(0, "rgba(255,255,255,0.07)");
   radial.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = radial;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function drawTagLine(greeting, typography) {
+function drawTagLine(ctx, greeting, typography) {
   const labelMap = {
     birthday: "BIRTHDAY",
     mother: "WITH LOVE",
@@ -300,40 +311,28 @@ function drawTagLine(greeting, typography) {
     morning: "GOOD MORNING",
     night: "GOOD NIGHT"
   };
-
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = typography.tagColor;
   ctx.shadowColor = "rgba(0,0,0,0.18)";
   ctx.shadowBlur = 10;
-  ctx.font = `700 26px Inter, sans-serif`;
+  ctx.font = "700 26px Inter, sans-serif";
   ctx.fillText(labelMap[greeting.occasion], 540, 86);
   ctx.restore();
 }
 
-function drawTitleAndBody(greeting) {
+function drawTitleAndBody(ctx, greeting) {
   const typography = styleTypography[greeting.visualStyle];
   const leftX = typography.align === "left" ? 120 : 540;
   const maxTextWidth = typography.align === "left" ? 760 : 800;
-
   ctx.save();
   ctx.textBaseline = "top";
   ctx.textAlign = typography.align;
 
-  const titleSize = fitFontSize(
-    ctx,
-    greeting.title,
-    maxTextWidth,
-    greeting.visualStyle === "soft" ? 92 : 82,
-    50,
-    typography.titleFamily,
-    700
-  );
-
+  const titleSize = fitFontSize(ctx, greeting.title, maxTextWidth, greeting.visualStyle === "soft" ? 92 : 82, 50, typography.titleFamily, 700);
   ctx.font = `700 ${titleSize}px ${typography.titleFamily}`;
   const titleLines = wrapText(ctx, greeting.title, maxTextWidth).slice(0, 2);
-
   let titleY = 800;
   if (titleLines.length === 2) titleY = 760;
 
@@ -341,212 +340,156 @@ function drawTitleAndBody(greeting) {
   ctx.shadowColor = "rgba(0,0,0,0.28)";
   ctx.shadowBlur = 22;
   ctx.shadowOffsetY = 4;
-
-  titleLines.forEach((line, index) => {
-    ctx.fillText(line, leftX, titleY + index * (titleSize + 6));
-  });
+  titleLines.forEach((line, index) => ctx.fillText(line, leftX, titleY + index * (titleSize + 6)));
 
   const bodySize = greeting.visualStyle === "soft" ? 37 : 35;
   ctx.font = `500 ${bodySize}px ${typography.bodyFamily}`;
   const bodyLines = wrapText(ctx, greeting.text, maxTextWidth - 30).slice(0, 8);
-
   ctx.fillStyle = typography.bodyColor;
   ctx.shadowColor = "rgba(0,0,0,0.20)";
   ctx.shadowBlur = 13;
   ctx.shadowOffsetY = 2;
-
   let bodyY = titleY + titleLines.length * (titleSize + 10) + 42;
   const bodyLineHeight = bodySize * 1.48;
+  bodyLines.forEach((line, index) => ctx.fillText(line, leftX, bodyY + index * bodyLineHeight));
 
-  bodyLines.forEach((line, index) => {
-    ctx.fillText(line, leftX, bodyY + index * bodyLineHeight);
-  });
-
-  ctx.font = `600 22px Inter, sans-serif`;
+  ctx.font = "600 22px Inter, sans-serif";
   ctx.fillStyle = typography.tagColor;
   ctx.shadowBlur = 8;
   ctx.shadowOffsetY = 1;
   ctx.fillText("Создано в «Поздравь»", typography.align === "left" ? 120 : 540, 1255);
-
   ctx.restore();
 }
 
-async function renderCard(imageDataUrl, greeting) {
+function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-
-    img.onload = () => {
-      generatedImage = img;
-      lastImageDataUrl = imageDataUrl;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawImageCover(img);
-      drawOverlay(greeting.visualStyle);
-      drawTagLine(greeting, styleTypography[greeting.visualStyle]);
-      drawTitleAndBody(greeting);
-
-      resolve();
-    };
-
-    img.onerror = () => reject(new Error("Не удалось загрузить AI-изображение."));
-    img.src = imageDataUrl;
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Не удалось загрузить изображение."));
+    img.src = src;
   });
 }
 
-async function requestAIBackground(greeting) {
-  const response = await fetch(`${API_BASE_URL}/api/generate-ai-card`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      initData: getMaxInitData(),
-      occasion: greeting.occasion,
-      visualStyle: greeting.visualStyle,
-      recipientName: greeting.name,
-      details: greeting.details
-    })
-  });
-
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(result.error || `Ошибка сервера ${response.status}`);
-  }
-
-  if (!result.imageData) {
-    throw new Error("Сервер не вернул изображение.");
-  }
-
-  return result.imageData;
+async function renderVariant(canvas, imageSource, greeting) {
+  const ctx = canvas.getContext("2d");
+  const img = await loadImage(imageSource);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawImageCover(ctx, canvas, img);
+  drawOverlay(ctx, canvas, greeting.visualStyle);
+  drawTagLine(ctx, greeting, styleTypography[greeting.visualStyle]);
+  drawTitleAndBody(ctx, greeting);
 }
 
-async function generateCard() {
-  if (!backendConfigured()) {
-    setStatus("Сначала вставьте адрес backend Timeweb в app.js.", true);
-    return;
-  }
-
-  generateButton.disabled = true;
-  newVariantButton.disabled = true;
-  setStatus("Создаём AI-фон и собираем открытку…");
-
-  try {
-    const greeting = buildGreeting();
-    const imageData = await requestAIBackground(greeting);
-
-    lastGreeting = greeting;
-    await renderCard(imageData, greeting);
-
-    resultSection.classList.remove("hidden");
-    resultSection.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-
-    setStatus("Готово! Если не понравился фон — нажмите «Новый AI-вариант». ");
-  } catch (error) {
-    console.error(error);
-    setStatus(`Не удалось создать открытку: ${error.message}`, true);
-  } finally {
-    generateButton.disabled = false;
-    newVariantButton.disabled = false;
-  }
+function cardFileName(greeting, idx) {
+  const base = (greeting.name || greeting.occasion || "otkrytka")
+    .trim().toLowerCase().replace(/[^a-zа-яё0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "otkrytka";
+  return `pozdrav-${base}-${idx + 1}.png`;
 }
 
-function downloadPNG() {
-  if (!lastGreeting) {
-    setStatus("Сначала создайте открытку.", true);
-    return;
+async function sendCanvasToMax(canvas) {
+  if (!window.WebApp || typeof window.WebApp.shareMaxContent !== "function") {
+    throw new Error("Отправка в MAX работает только внутри мини-приложения MAX.");
   }
-
-  const link = document.createElement("a");
-  const fileName = (lastGreeting.name || "otkrytka")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-zа-яё0-9]+/gi, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40) || "otkrytka";
-
-  link.download = `pozdrav-${fileName}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-
-  setStatus("PNG сохранён на устройство.");
-}
-
-function canvasAsBase64PNG() {
-  return canvas.toDataURL("image/png");
-}
-
-async function sendToMax() {
-  if (!lastGreeting) {
-    setStatus("Сначала создайте открытку.", true);
-    return;
-  }
-
-  if (
-    !window.WebApp ||
-    typeof window.WebApp.shareMaxContent !== "function"
-  ) {
-    setStatus("Отправка в MAX работает только внутри мини-приложения MAX.", true);
-    return;
-  }
-
   const initData = getMaxInitData();
   if (!initData) {
-    setStatus("MAX не передал данные запуска. Откройте приложение через бота MAX.", true);
-    return;
+    throw new Error("MAX не передал данные запуска. Откройте приложение через бота MAX.");
+  }
+  const response = await fetch(`${API_BASE_URL}/api/send-card`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      initData,
+      imageData: canvas.toDataURL("image/png"),
+      caption: "🎁 Открытка из «Поздравь»"
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `Ошибка сервера ${response.status}`);
+  if (!result.mid) throw new Error("Сервер не вернул идентификатор сообщения.");
+  window.WebApp.shareMaxContent({ mid: result.mid, chatType: "DIALOG" });
+}
+
+function clearResults() {
+  resultsGrid.innerHTML = "";
+  currentCards = [];
+}
+
+function createVariantCard(index, sourceLabel) {
+  const node = variantTemplate.content.firstElementChild.cloneNode(true);
+  const canvas = node.querySelector("canvas");
+  const title = node.querySelector(".variant-title");
+  const label = node.querySelector(".variant-source");
+  title.textContent = `Вариант ${index + 1}`;
+  label.textContent = sourceLabel;
+  resultsGrid.appendChild(node);
+  return {
+    node,
+    canvas,
+    downloadButton: node.querySelector(".js-download"),
+    sendButton: node.querySelector(".js-send")
+  };
+}
+
+async function buildVariants() {
+  const greeting = buildGreeting();
+  const count = Math.min(3, Math.max(2, Number(variantCountInput.value || 2)));
+  const mode = sourceModeInput.value;
+  clearResults();
+  setStatus(mode === "ai" ? "Генерируем 2–3 AI-варианта…" : "Подбираем 2–3 варианта из базы…");
+
+  const items = mode === "ai"
+    ? await getAIVariants(greeting, count)
+    : await getLibraryVariants(greeting.occasion, greeting.visualStyle, count);
+
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i];
+    const card = createVariantCard(i, item.sourceLabel);
+    await renderVariant(card.canvas, item.imageData || item.imageUrl, greeting);
+
+    card.downloadButton.addEventListener("click", () => {
+      const link = document.createElement("a");
+      link.download = cardFileName(greeting, i);
+      link.href = card.canvas.toDataURL("image/png");
+      link.click();
+      setStatus(`Вариант ${i + 1} сохранён.`);
+    });
+
+    card.sendButton.addEventListener("click", async () => {
+      card.sendButton.disabled = true;
+      try {
+        setStatus(`Отправляем вариант ${i + 1} в MAX…`);
+        await sendCanvasToMax(card.canvas);
+        setStatus("Выберите чат в MAX…");
+      } catch (error) {
+        console.error(error);
+        setStatus(`Не удалось отправить: ${error.message}`, true);
+      } finally {
+        card.sendButton.disabled = false;
+      }
+    });
+
+    currentCards.push(card);
   }
 
-  sendMaxButton.disabled = true;
-  setStatus("Загружаем открытку в MAX…");
+  resultsSection.classList.remove("hidden");
+  resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  setStatus("Готово! Выберите лучший вариант или создайте новые.");
+}
 
+async function handleGenerate() {
+  generateButton.disabled = true;
   try {
-    const response = await fetch(`${API_BASE_URL}/api/send-card`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        initData,
-        imageData: canvasAsBase64PNG(),
-        caption: "🎁 Открытка из «Поздравь»"
-      })
-    });
-
-    const result = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(result.error || `Ошибка сервера ${response.status}`);
-    }
-
-    if (!result.mid) {
-      throw new Error("Сервер не вернул идентификатор сообщения.");
-    }
-
-    setStatus("Выберите чат в MAX…");
-
-    window.WebApp.shareMaxContent({
-      mid: result.mid,
-      chatType: "DIALOG"
-    });
+    await buildVariants();
   } catch (error) {
     console.error(error);
-    setStatus(`Не удалось отправить: ${error.message}`, true);
+    setStatus(`Не удалось создать варианты: ${error.message}`, true);
   } finally {
-    sendMaxButton.disabled = false;
+    generateButton.disabled = false;
   }
 }
 
-generateButton.addEventListener("click", generateCard);
-newVariantButton.addEventListener("click", generateCard);
-downloadButton.addEventListener("click", downloadPNG);
-sendMaxButton.addEventListener("click", sendToMax);
-
-nameInput.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") generateCard();
-});
+generateButton.addEventListener("click", handleGenerate);
+nameInput.addEventListener("keydown", (event) => { if (event.key === "Enter") handleGenerate(); });
 
 try {
   if (window.WebApp && typeof window.WebApp.ready === "function") {

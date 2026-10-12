@@ -4,27 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#6f4ef6" />
-  <title>Поздравь — AI открытки</title>
-
+  <title>Поздравь — v3</title>
   <script src="https://st.max.ru/js/max-web-app.js"></script>
-
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=Prata&display=swap"
-    rel="stylesheet"
-  />
-
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&family=Prata&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="app">
     <header class="header">
       <div class="logo" aria-hidden="true">🎁</div>
-
       <div>
         <h1>Поздравь</h1>
-        <p>AI-открытки через Yandex AI Studio + Alice AI ART 3.0</p>
+        <p>Версия 3: база готовых фонов + AI, и сразу 2–3 варианта открытки.</p>
       </div>
     </header>
 
@@ -32,8 +25,8 @@
       <div class="section-title">
         <span class="step">1</span>
         <div>
-          <h2>Что создаём</h2>
-          <p>Имя необязательно. Чем лучше описание, тем красивее фон.</p>
+          <h2>Параметры открытки</h2>
+          <p>Можно выбрать источник фона: готовая база или AI.</p>
         </div>
       </div>
 
@@ -46,82 +39,71 @@
         <option value="night">🌙 Спокойной ночи</option>
       </select>
 
-      <label for="visualStyle">Визуальный стиль</label>
+      <label for="visualStyle">Стиль</label>
       <select id="visualStyle">
         <option value="premium">✨ Premium</option>
         <option value="soft">🌸 Soft</option>
         <option value="modern">🖤 Modern</option>
       </select>
 
-      <label for="name">Имя <span class="optional">(необязательно)</span></label>
-      <input
-        id="name"
-        type="text"
-        maxlength="30"
-        placeholder="Например: Александр"
-        autocomplete="off"
-      />
-
-      <label for="details">Пара слов о человеке <span class="optional">(необязательно)</span></label>
-      <textarea
-        id="details"
-        maxlength="140"
-        placeholder="Например: любит море, путешествия и кофе"
-      ></textarea>
-
-      <button id="generateButton" class="button button-primary">
-        ✨ Создать AI-открытку
-      </button>
-
-      <p id="statusMessage" class="status" aria-live="polite"></p>
-    </section>
-
-    <section id="resultSection" class="card hidden">
-      <div class="section-title">
-        <span class="step">2</span>
+      <div class="grid-2">
         <div>
-          <h2>Готовая открытка</h2>
-          <p>Текст теперь рисуется без подложки — красивой типографикой прямо поверх изображения.</p>
+          <label for="sourceMode">Источник изображения</label>
+          <select id="sourceMode">
+            <option value="library">📸 Готовая база</option>
+            <option value="ai">✨ Yandex AI</option>
+          </select>
+        </div>
+        <div>
+          <label for="variantCount">Сколько вариантов</label>
+          <select id="variantCount">
+            <option value="2">2 варианта</option>
+            <option value="3">3 варианта</option>
+          </select>
         </div>
       </div>
 
-      <div class="canvas-wrap">
-        <canvas
-          id="cardCanvas"
-          width="1080"
-          height="1350"
-          aria-label="Предпросмотр AI-открытки"
-        ></canvas>
-      </div>
+      <label for="name">Имя <span class="optional">(необязательно)</span></label>
+      <input id="name" type="text" maxlength="30" placeholder="Например: Александр" autocomplete="off" />
 
-      <div class="result-actions">
-        <button id="newVariantButton" class="button button-secondary">
-          🔄 Новый AI-вариант
-        </button>
+      <label for="details">Пара слов о человеке <span class="optional">(необязательно)</span></label>
+      <textarea id="details" maxlength="140" placeholder="Например: любит море, путешествия и кофе"></textarea>
 
-        <button id="downloadButton" class="button button-secondary">
-          ⬇️ Скачать PNG
-        </button>
-      </div>
-
-      <button id="sendMaxButton" class="button button-max">
-        📨 Отправить в MAX
-      </button>
-
-      <div class="tip-box">
-        <strong>Совет</strong>
-        <p>
-          Если фон выглядит слишком перегруженным — оставь описание короче
-          и попробуй стиль <strong>Premium</strong> или <strong>Soft</strong>.
-        </p>
-      </div>
+      <button id="generateButton" class="button button-primary">✨ Создать 2–3 варианта</button>
+      <p id="statusMessage" class="status" aria-live="polite"></p>
     </section>
 
+    <section id="resultsSection" class="card hidden">
+      <div class="section-title">
+        <span class="step">2</span>
+        <div>
+          <h2>Выбери лучший вариант</h2>
+          <p>Каждую открытку можно скачать отдельно или отправить в MAX.</p>
+        </div>
+      </div>
+      <div id="resultsGrid" class="results-grid"></div>
+    </section>
+
+    <template id="variantTemplate">
+      <article class="variant-card">
+        <div class="variant-head">
+          <strong class="variant-title">Вариант 1</strong>
+          <span class="variant-source"></span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas width="1080" height="1350"></canvas>
+        </div>
+        <div class="variant-actions">
+          <button class="button button-secondary js-download">⬇️ Скачать</button>
+          <button class="button button-max js-send">📨 Отправить в MAX</button>
+        </div>
+      </article>
+    </template>
+
     <footer>
-      Поздравь · Yandex AI Studio · Alice AI ART 3.0 · v2
+      Поздравь · v3 · Готовые фоны + AI · 2–3 варианта
     </footer>
   </main>
-
   <script src="app.js"></script>
 </body>
 </html>

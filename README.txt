@@ -1,26 +1,27 @@
-ПОЗДРАВЬ — YANDEX AI STUDIO v2
-==================================
+ПОЗДРАВЬ — VERSION 3
+=====================
 
-Что нового в v2
+Что нового в v3
 ---------------
-1. Новый premium-подход к промптам:
-   - больше editorial / luxury / cinematic эстетики;
-   - просьба оставить clean negative space в нижней трети;
-   - AI не рисует текст.
-2. Убрана плашка под текст.
-3. Текст рисуется прямо поверх изображения.
-4. Добавлены красивые шрифты:
-   - Premium: Playfair Display + Inter
-   - Soft: Cormorant Garamond + Inter
-   - Modern: Prata + Inter
-5. Добавлен мягкий тёмный градиент поверх фона для лучшей читаемости.
-6. Имя по-прежнему необязательное.
+1. Появилось 2 режима:
+   - 📸 Готовая база фонов
+   - ✨ Yandex AI
+2. Пользователю сразу выдаётся 2 или 3 варианта.
+3. Каждую открытку можно:
+   - скачать отдельно
+   - отправить отдельно в MAX
+4. В проект добавлена локальная библиотека готовых фонов:
+   backgrounds.json
+   assets/backgrounds/*.jpg
+5. Сохранилась красивая типографика из v2.
 
 Структура
 ---------
 index.html
 style.css
 app.js
+backgrounds.json
+assets/backgrounds/
 README.txt
 server/
   server.js
@@ -28,17 +29,17 @@ server/
   .env.example
   .gitignore
 
-Что загрузить на GitHub
------------------------
-Замени у себя:
-- index.html
-- style.css
-- app.js
-- README.txt
-- server/server.js
-- server/package.json
-- server/.env.example
-- server/.gitignore
+Что загрузить в GitHub
+----------------------
+Замените весь проект содержимым этого архива.
+
+Что важно в app.js
+------------------
+Вставьте ваш backend Timeweb:
+const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
+
+Пример:
+const API_BASE_URL = "https://pozdrav-max-api-xxxx.twc1.net";
 
 Настройка Timeweb
 -----------------
@@ -63,39 +64,39 @@ YANDEX_FOLDER_ID=...
 INIT_DATA_MAX_AGE_SECONDS=86400
 ALLOW_BROWSER_AI_GENERATION=true
 
-ВАЖНО
------
-В app.js обязательно вставь свой backend Timeweb:
-
-const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
-
-Пример:
-const API_BASE_URL = "https://pozdrav-max-api-xxxx.twc1.net";
-
-Проверка
---------
-1. Открой:
-   https://ВАШ-БЭКЕНД/health
+Проверка backend
+----------------
+Откройте:
+https://ВАШ-БЭКЕНД/health
 
 Должно быть:
 {
   "ok": true,
   "service": "pozdrav-max-api",
-  "imageModel": "aliceai-image-art-3.0"
+  "imageModel": "aliceai-image-art-3.0",
+  "multiVariant": true
 }
 
-2. Открой GitHub Pages.
-3. Создай открытку.
-4. Если всё работает — появится красивая AI-картинка и текст поверх неё.
+Как заменить базу фонов на свои фотографии
+------------------------------------------
+1. Загрузите свои JPG/PNG в папку:
+   assets/backgrounds/
+2. Откройте backgrounds.json
+3. Добавьте пути к нужным файлам по категориям.
 
-Если снова нужен redeploy
--------------------------
-Timeweb Cloud -> App Platform -> приложение -> Деплой
--> выбрать последний коммит -> Запустить деплой / Повторить деплой
+Пример:
+"birthday": {
+  "premium": [
+    "assets/backgrounds/my-birthday-1.jpg",
+    "assets/backgrounds/my-birthday-2.jpg"
+  ]
+}
 
-Совет по качеству
------------------
-Если картинка получилась перегруженной:
-- убери длинное описание;
-- попробуй стиль Premium или Soft;
-- нажми "Новый AI-вариант".
+Если хотите использовать сторонний сайт
+--------------------------------------
+Проще всего оставить v3 как есть, а потом заменить local library
+на API Pixabay / Pexels через backend.
+
+Redeploy
+--------
+После замены файлов в GitHub сделайте Redeploy в Timeweb.
