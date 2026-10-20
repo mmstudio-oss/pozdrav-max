@@ -8,7 +8,8 @@ const BOT_TOKEN = process.env.BOT_TOKEN || "";
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "";
 const YANDEX_API_KEY = process.env.YANDEX_API_KEY || "";
 const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID || "";
-const ALLOW_BROWSER_AI_GENERATION = String(process.env.ALLOW_BROWSER_AI_GENERATION || "false").toLowerCase() === "true";
+const PIXABAY_API_KEY = process.env.PIXABAY_API_KEY || "";
+const ALLOW_BROWSER_AI_GENERATION = String(process.env.ALLOW_BROWSER_PREVIEW || process.env.ALLOW_BROWSER_AI_GENERATION || "false").toLowerCase() === "true";
 const INIT_DATA_MAX_AGE_SECONDS = Number(process.env.INIT_DATA_MAX_AGE_SECONDS || 86400);
 
 if (!FRONTEND_ORIGIN) { console.error("ОШИБКА: не задан FRONTEND_ORIGIN"); process.exit(1); }
@@ -27,6 +28,8 @@ app.use(cors({
 app.use(express.json({ limit: "20mb" }));
 
 const rateMap = new Map();
+const pixabayCache = new Map();
+const PIXABAY_CACHE_MS = 24 * 60 * 60 * 1000;
 function rateAllowed(key, maxRequests, windowMs) {
   const now = Date.now();
   const current = rateMap.get(key);
@@ -181,6 +184,70 @@ async function generateOneImageWithYandex({ occasion, visualStyle, recipientName
   return { imageData: `data:image/png;base64,${b64}`, promptPreview: prompt };
 }
 
+
+const pixabayQueries = {
+  birthday: { premium: "luxury birthday flowers celebration elegant", soft: "pastel flowers celebration soft", modern: "elegant celebration lights minimal" },
+  mother: { premium: "peonies flowers elegant luxury", soft: "pastel flowers peonies soft", modern: "flowers minimal elegant bouquet" },
+  love: { premium: "romantic flowers lights elegant", soft: "pink flowers romantic soft", modern: "romantic sunset minimal elegant" },
+  morning: { premium: "morning coffee sunlight flowers", soft: "soft morning light flowers", modern: "morning window coffee minimal" },
+  night: { premium: "moon night sky dreamy", soft: "moon stars night dreamy", modern: "dark night city lights elegant" }
+};
+function getPixabayQuery(occasion, visualStyle) { return pixabayQueries?.[occasion]?.[visualStyle] || pixabayQueries.birthday.premium; }
+function shuffle(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+async function searchPixabay(occasion, visualStyle) {
+  if (!PIXABAY_API_KEY) throw new Error("Pixabay не настроен: добавьте PIXABAY_API_KEY в Timeweb.");
+  const query = getPixabayQuery(occasion, visualStyle);
+  const cacheKey = `${occasion}:${visualStyle}:${query}`;
+  const cached = pixabayCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.hits;
+  const params = new URLSearchParams({
+    key: PIXABAY_API_KEY, q: query, image_type: "photo", orientation: "vertical",
+    safesearch: "true", order: "popular", min_width: "800", min_height: "1000", per_page: "60", page: "1"
+  });
+  const response = await fetch(`https://pixabay.com/api/?${params.toString()}`, { headers: { Accept: "application/json" } });
+  const raw = await response.text();
+  let data = {};
+  if (raw) { try { data = JSON.parse(raw); } catch { data = { raw }; } }
+  if (!response.ok) throw new Error(`Pixabay API: ${data?.message || data?.error || raw || response.status}`);
+  const hits = Array.isArray(data?.hits) ? data.hits : [];
+  if (!hits.length) throw new Error("Pixabay не нашёл подходящих фотографий.");
+  pixabayCache.set(cacheKey, { hits, expiresAt: Date.now() + PIXABAY_CACHE_MS });
+  return hits;
+}
+async function downloadPixabayImage(hit) {
+  const url = hit?.largeImageURL || hit?.webformatURL;
+  if (!url) throw new Error("Pixabay не вернул URL фотографии.");
+  const response = await fetch(url, { headers: { Accept: "image/*" } });
+  if (!response.ok) throw new Error(`Не удалось скачать фото Pixabay: ${response.status}`);
+  const contentType = response.headers.get("content-type") || "image/jpeg";
+  if (!contentType.startsWith("image/")) throw new Error("Pixabay вернул не изображение.");
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (buffer.length === 0 || buffer.length > 12 * 1024 * 1024) throw new Error("Фото Pixabay пустое или слишком большое.");
+  return { imageData: `data:${contentType};base64,${buffer.toString("base64")}`, author: String(hit?.user || "Автор Pixabay"), pageUrl: String(hit?.pageURL || "https://pixabay.com/") };
+}
+async function getPixabayVariants({ occasion, visualStyle, variantCount }) {
+  const hits = await searchPixabay(occasion, visualStyle);
+  const candidates = shuffle(hits).slice(0, Math.max(12, variantCount * 4));
+  const images = [];
+  for (const hit of candidates) {
+    try {
+      images.push(await downloadPixabayImage(hit));
+      if (images.length >= variantCount) break;
+    } catch (error) {
+      console.warn("Не удалось загрузить одно фото Pixabay:", error.message);
+    }
+  }
+  if (images.length < variantCount) throw new Error("Не удалось скачать достаточно фотографий Pixabay. Попробуйте ещё раз.");
+  return images;
+}
+
 function findImageToken(uploadInfo, uploadResult) {
   if (typeof uploadResult?.token === "string") return uploadResult.token;
   const photos = uploadResult?.photos;
@@ -250,7 +317,25 @@ async function sendImageToUser({ userId, token, caption }) {
 }
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "pozdrav-max-api", imageModel: "aliceai-image-art-3.0", multiVariant: true });
+  res.json({ ok: true, service: "pozdrav-max-api", version: "3-online", imageModel: "aliceai-image-art-3.0", pixabayConfigured: Boolean(PIXABAY_API_KEY), multiVariant: true });
+});
+
+
+app.post("/api/photo-variants", async (req, res) => {
+  try {
+    const { initData, occasion = "birthday", visualStyle = "premium", variantCount = 3 } = req.body || {};
+    const auth = validateOrUseBrowserMode(initData);
+    const count = Math.min(3, Math.max(2, Number(variantCount || 3)));
+    const rateKey = `pixabay:${auth.userId}`;
+    if (!rateAllowed(rateKey, 20, 10 * 60 * 1000)) return res.status(429).json({ error: "Слишком много запросов к базе фото. Попробуйте через несколько минут." });
+    const images = await getPixabayVariants({ occasion, visualStyle, variantCount: count });
+    res.json({ ok: true, provider: "pixabay", images });
+  } catch (error) {
+    console.error(error);
+    const message = error instanceof Error ? error.message : "Внутренняя ошибка сервера.";
+    const authError = /initData|подпись|auth_date|устарели|пользовател/i.test(message);
+    res.status(authError ? 401 : 500).json({ error: message });
+  }
 });
 
 app.post("/api/generate-ai-cards", async (req, res) => {
@@ -312,5 +397,5 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Pozdrav MAX API v3 запущен на порту ${PORT}`);
+  console.log(`Pozdrav MAX API v3 Online запущен на порту ${PORT}`);
 });
