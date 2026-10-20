@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://mmstudio-oss-pozdrav-max-5bd2.twc1.net";
+const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
 
 const occasionInput = document.getElementById("occasion");
 const visualStyleInput = document.getElementById("visualStyle");
@@ -12,7 +12,6 @@ const resultsSection = document.getElementById("resultsSection");
 const resultsGrid = document.getElementById("resultsGrid");
 const variantTemplate = document.getElementById("variantTemplate");
 
-let backgroundsManifest = null;
 let currentCards = [];
 let previousTextIndex = -1;
 
@@ -192,32 +191,27 @@ function buildGreeting() {
   return { occasion, visualStyle, name, details, title: titleFor(occasion, name), text };
 }
 
-async function loadBackgroundManifest() {
-  if (backgroundsManifest) return backgroundsManifest;
-  const response = await fetch("backgrounds.json");
-  if (!response.ok) throw new Error("Не удалось загрузить базу фонов.");
-  backgroundsManifest = await response.json();
-  return backgroundsManifest;
-}
-
-function pickUniqueRandom(items, count) {
-  const pool = [...items];
-  const out = [];
-  while (pool.length && out.length < count) {
-    const i = Math.floor(Math.random() * pool.length);
-    out.push(pool.splice(i, 1)[0]);
-  }
-  while (out.length < count && items.length) {
-    out.push(items[Math.floor(Math.random() * items.length)]);
-  }
-  return out;
-}
-
-async function getLibraryVariants(occasion, visualStyle, count) {
-  const manifest = await loadBackgroundManifest();
-  const items = manifest?.[occasion]?.[visualStyle] || [];
-  if (!items.length) throw new Error("Для этой категории пока нет готовых фонов.");
-  return pickUniqueRandom(items, count).map((src) => ({ imageUrl: src, sourceLabel: "База" }));
+async function getPhotoVariants(greeting, count) {
+  if (!backendConfigured()) throw new Error("Сначала вставьте адрес backend Timeweb в app.js.");
+  const response = await fetch(`${API_BASE_URL}/api/photo-variants`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      initData: getMaxInitData(),
+      occasion: greeting.occasion,
+      visualStyle: greeting.visualStyle,
+      variantCount: count
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `Ошибка сервера ${response.status}`);
+  if (!Array.isArray(result.images) || !result.images.length) throw new Error("Сервер не вернул фотографии Pixabay.");
+  return result.images.map((item) => ({
+    imageData: item.imageData,
+    sourceLabel: "Pixabay",
+    author: item.author || "Автор",
+    pageUrl: item.pageUrl || "https://pixabay.com/"
+  }));
 }
 
 async function getAIVariants(greeting, count) {
@@ -414,13 +408,24 @@ function clearResults() {
   currentCards = [];
 }
 
-function createVariantCard(index, sourceLabel) {
+function createVariantCard(index, item) {
   const node = variantTemplate.content.firstElementChild.cloneNode(true);
   const canvas = node.querySelector("canvas");
   const title = node.querySelector(".variant-title");
   const label = node.querySelector(".variant-source");
   title.textContent = `Вариант ${index + 1}`;
-  label.textContent = sourceLabel;
+  label.textContent = item.sourceLabel;
+  if (item.sourceLabel === "Pixabay") {
+    const credit = document.createElement("div");
+    credit.className = "photo-credit";
+    const link = document.createElement("a");
+    link.href = item.pageUrl || "https://pixabay.com/";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = `Фото: ${item.author || "Автор"} · Pixabay`;
+    credit.appendChild(link);
+    node.querySelector(".canvas-wrap").insertAdjacentElement("afterend", credit);
+  }
   resultsGrid.appendChild(node);
   return {
     node,
@@ -435,16 +440,16 @@ async function buildVariants() {
   const count = Math.min(3, Math.max(2, Number(variantCountInput.value || 2)));
   const mode = sourceModeInput.value;
   clearResults();
-  setStatus(mode === "ai" ? "Генерируем 2–3 AI-варианта…" : "Подбираем 2–3 варианта из базы…");
+  setStatus(mode === "ai" ? "Генерируем 2–3 AI-варианта…" : "Ищем 2–3 подходящих фото в Pixabay…");
 
   const items = mode === "ai"
     ? await getAIVariants(greeting, count)
-    : await getLibraryVariants(greeting.occasion, greeting.visualStyle, count);
+    : await getPhotoVariants(greeting, count);
 
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i];
-    const card = createVariantCard(i, item.sourceLabel);
-    await renderVariant(card.canvas, item.imageData || item.imageUrl, greeting);
+    const card = createVariantCard(i, item);
+    await renderVariant(card.canvas, item.imageData, greeting);
 
     card.downloadButton.addEventListener("click", () => {
       const link = document.createElement("a");

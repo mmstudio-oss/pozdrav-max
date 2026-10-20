@@ -1,102 +1,56 @@
-ПОЗДРАВЬ — VERSION 3
-=====================
+ПОЗДРАВЬ — VERSION 3 ONLINE
+==========================
 
-Что нового в v3
----------------
-1. Появилось 2 режима:
-   - 📸 Готовая база фонов
-   - ✨ Yandex AI
-2. Пользователю сразу выдаётся 2 или 3 варианта.
-3. Каждую открытку можно:
-   - скачать отдельно
-   - отправить отдельно в MAX
-4. В проект добавлена локальная библиотека готовых фонов:
-   backgrounds.json
-   assets/backgrounds/*.jpg
-5. Сохранилась красивая типографика из v2.
+Локальной базы фотографий больше нет.
 
-Структура
----------
-index.html
-style.css
-app.js
-backgrounds.json
-assets/backgrounds/
-README.txt
-server/
-  server.js
-  package.json
-  .env.example
-  .gitignore
+Режимы:
+1. Фото Pixabay — фото ищутся онлайн через Pixabay API.
+2. Yandex AI — Alice AI ART 3.0.
 
-Что загрузить в GitHub
-----------------------
-Замените весь проект содержимым этого архива.
+Пользователь получает 2 или 3 варианта.
 
-Что важно в app.js
-------------------
-Вставьте ваш backend Timeweb:
-const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
+ЧТО ДОБАВИТЬ В TIMEWEB
+-----------------------
+PIXABAY_API_KEY=ваш_ключ_Pixabay
 
-Пример:
-const API_BASE_URL = "https://pozdrav-max-api-xxxx.twc1.net";
-
-Настройка Timeweb
------------------
-Папка проекта:
-server
-
-Build:
-npm install
-
-Start:
-npm start
-
-Health check:
-/health
-
-Переменные Timeweb
-------------------
+Оставьте также:
 BOT_TOKEN=...
 FRONTEND_ORIGIN=https://ВАШ-ЛОГИН.github.io
 YANDEX_API_KEY=...
 YANDEX_FOLDER_ID=...
 INIT_DATA_MAX_AGE_SECONDS=86400
-ALLOW_BROWSER_AI_GENERATION=true
+ALLOW_BROWSER_PREVIEW=true
 
-Проверка backend
-----------------
-Откройте:
-https://ВАШ-БЭКЕНД/health
+После тестов внутри MAX:
+ALLOW_BROWSER_PREVIEW=false
 
-Должно быть:
+КАК ПОЛУЧИТЬ PIXABAY_API_KEY
+----------------------------
+Откройте https://pixabay.com/api/docs/ и войдите в аккаунт Pixabay.
+Скопируйте свой API key. Не публикуйте его в GitHub.
+
+TIMEWEB
+-------
+Папка проекта: server
+Build: npm install
+Start: npm start
+Health check: /health
+
+После загрузки файлов в GitHub сделайте Redeploy.
+
+ПРОВЕРКА
+--------
+https://ВАШ-BACKEND/health
+
+Ожидается:
 {
   "ok": true,
   "service": "pozdrav-max-api",
+  "version": "3-online",
   "imageModel": "aliceai-image-art-3.0",
+  "pixabayConfigured": true,
   "multiVariant": true
 }
 
-Как заменить базу фонов на свои фотографии
-------------------------------------------
-1. Загрузите свои JPG/PNG в папку:
-   assets/backgrounds/
-2. Откройте backgrounds.json
-3. Добавьте пути к нужным файлам по категориям.
-
-Пример:
-"birthday": {
-  "premium": [
-    "assets/backgrounds/my-birthday-1.jpg",
-    "assets/backgrounds/my-birthday-2.jpg"
-  ]
-}
-
-Если хотите использовать сторонний сайт
---------------------------------------
-Проще всего оставить v3 как есть, а потом заменить local library
-на API Pixabay / Pexels через backend.
-
-Redeploy
---------
-После замены файлов в GitHub сделайте Redeploy в Timeweb.
+В этой версии нет backgrounds.json и assets/backgrounds/.
+Frontend не получает PIXABAY_API_KEY. Поиск идёт через Timeweb, результаты поиска кешируются сервером на 24 часа, а выбранные изображения Timeweb скачивает перед передачей в приложение.
