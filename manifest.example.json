@@ -83,5 +83,92 @@
       "night/modern/02.jpg",
       "night/modern/03.jpg"
     ]
+  },
+  "ready": {
+    "birthday": {
+      "premium": [
+        "ready/birthday/premium/01.jpg",
+        "ready/birthday/premium/02.jpg",
+        "ready/birthday/premium/03.jpg"
+      ],
+      "soft": [
+        "ready/birthday/soft/01.jpg",
+        "ready/birthday/soft/02.jpg",
+        "ready/birthday/soft/03.jpg"
+      ],
+      "modern": [
+        "ready/birthday/modern/01.jpg",
+        "ready/birthday/modern/02.jpg",
+        "ready/birthday/modern/03.jpg"
+      ]
+    },
+    "mother": {
+      "premium": [
+        "ready/mother/premium/01.jpg",
+        "ready/mother/premium/02.jpg",
+        "ready/mother/premium/03.jpg"
+      ],
+      "soft": [
+        "ready/mother/soft/01.jpg",
+        "ready/mother/soft/02.jpg",
+        "ready/mother/soft/03.jpg"
+      ],
+      "modern": [
+        "ready/mother/modern/01.jpg",
+        "ready/mother/modern/02.jpg",
+        "ready/mother/modern/03.jpg"
+      ]
+    },
+    "love": {
+      "premium": [
+        "ready/love/premium/01.jpg",
+        "ready/love/premium/02.jpg",
+        "ready/love/premium/03.jpg"
+      ],
+      "soft": [
+        "ready/love/soft/01.jpg",
+        "ready/love/soft/02.jpg",
+        "ready/love/soft/03.jpg"
+      ],
+      "modern": [
+        "ready/love/modern/01.jpg",
+        "ready/love/modern/02.jpg",
+        "ready/love/modern/03.jpg"
+      ]
+    },
+    "morning": {
+      "premium": [
+        "ready/morning/premium/01.jpg",
+        "ready/morning/premium/02.jpg",
+        "ready/morning/premium/03.jpg"
+      ],
+      "soft": [
+        "ready/morning/soft/01.jpg",
+        "ready/morning/soft/02.jpg",
+        "ready/morning/soft/03.jpg"
+      ],
+      "modern": [
+        "ready/morning/modern/01.jpg",
+        "ready/morning/modern/02.jpg",
+        "ready/morning/modern/03.jpg"
+      ]
+    },
+    "night": {
+      "premium": [
+        "ready/night/premium/01.jpg",
+        "ready/night/premium/02.jpg",
+        "ready/night/premium/03.jpg"
+      ],
+      "soft": [
+        "ready/night/soft/01.jpg",
+        "ready/night/soft/02.jpg",
+        "ready/night/soft/03.jpg"
+      ],
+      "modern": [
+        "ready/night/modern/01.jpg",
+        "ready/night/modern/02.jpg",
+        "ready/night/modern/03.jpg"
+      ]
+    }
   }
 }
