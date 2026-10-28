@@ -178,6 +178,16 @@ function chooseVariant(items) {
   return items[index];
 }
 
+function compactSentence(text, maxLength = 150) {
+  const normalized = String(text || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= maxLength) return normalized;
+
+  const short = normalized.slice(0, maxLength - 1);
+  const lastSpace = short.lastIndexOf(" ");
+  return `${(lastSpace > 45 ? short.slice(0, lastSpace) : short).trim()}…`;
+}
+
 function titleFor(occasion, name) {
   if (!name) {
     return {
@@ -201,11 +211,13 @@ function buildGreeting() {
   const occasion = occasionInput.value;
   const visualStyle = visualStyleInput.value;
   const name = nameInput.value.trim();
-  const details = detailsInput.value.trim();
+  const details = compactSentence(detailsInput.value.trim(), 56);
   let text = chooseVariant(textVariants[occasion][visualStyle]);
   if (details) {
-    text += ` Пусть всё, что тебе дорого — ${details.toLowerCase()} — приносит ещё больше радости.`;
+    text += ` Пусть рядом будет всё, что тебе особенно дорого: ${details.toLowerCase()}.`;
   }
+
+  text = compactSentence(text, 170);
   return { occasion, visualStyle, name, details, title: titleFor(occasion, name), text };
 }
 
@@ -380,7 +392,7 @@ function analyzeRegion(imageData) {
   return { score, brightness, contrast };
 }
 
-function findBestTextArea(ctx, canvas) {
+function findBestTextArea(ctx, canvas, textLength = 0) {
   const candidates = [
     { name: "top-left",     x: 40,  y: 72,  w: 560, h: 640, align: "left" },
     { name: "top-right",    x: 480, y: 72,  w: 560, h: 640, align: "right" },
@@ -399,9 +411,11 @@ function findBestTextArea(ctx, canvas) {
       getImageDataSafe(ctx, region.x, region.y, region.w, region.h)
     );
 
-    const centerPenalty = region.align === "center" ? 5 : 0;
+    const longText = textLength > 95;
+    const centerPenalty = region.align === "center" ? (longText ? 0.8 : 5) : 0;
     const bottomPenalty = region.name.startsWith("bottom") ? 1.5 : 0;
-    const effectiveScore = analysis.score + centerPenalty + bottomPenalty;
+    const widthBonus = longText ? region.w * 0.006 : 0;
+    const effectiveScore = analysis.score + centerPenalty + bottomPenalty - widthBonus;
 
     if (!best || effectiveScore < best.effectiveScore) {
       best = {
@@ -478,6 +492,107 @@ function fitWrappedText(ctx, text, maxWidth, maxLines, startSize, minSize, weigh
   };
 }
 
+function measureComposition(ctx, greeting, typography, composition, region, sizes) {
+  const effectiveAlign = composition.alignOverride || region.align;
+  const sidePad = effectiveAlign === "center" ? 26 : 20;
+  const maxWidth = region.w - sidePad * 2;
+
+  const titleFit = fitWrappedText(
+    ctx,
+    greeting.title,
+    maxWidth,
+    composition.maxTitleLines,
+    sizes.title,
+    Math.min(86, sizes.title),
+    typography.titleWeight,
+    typography.titleFamily
+  );
+
+  const titleLineHeight = titleFit.size * (greeting.visualStyle === "premium" ? 0.95 : 0.92);
+  const titleHeight = titleFit.lines.length * titleLineHeight;
+  const titleGap = composition.titleGap;
+
+  ctx.font = fontString(typography.bodyWeight, sizes.body, typography.bodyFamily);
+  let bodyLines = wrapText(ctx, greeting.text, maxWidth);
+  const bodyLineHeight = sizes.body * (greeting.visualStyle === "modern" ? 1.24 : 1.16);
+
+  if (bodyLines.length > sizes.maxBodyLines) {
+    bodyLines = bodyLines.slice(0, sizes.maxBodyLines);
+    const last = bodyLines[bodyLines.length - 1] || "";
+    if (!last.endsWith("…")) {
+      bodyLines[bodyLines.length - 1] = compactSentence(last, Math.max(16, last.length - 1));
+    }
+  }
+
+  const bodyHeight = bodyLines.length * bodyLineHeight;
+  const topPad = 16 + composition.yOffset;
+  const bottomPad = 26;
+  const brandReserve = 46;
+  const totalHeight = topPad + titleHeight + titleGap + bodyHeight + brandReserve + bottomPad;
+
+  return {
+    effectiveAlign,
+    sidePad,
+    maxWidth,
+    titleFit,
+    titleLineHeight,
+    titleHeight,
+    bodyLines,
+    bodyLineHeight,
+    bodyHeight,
+    topPad,
+    bottomPad,
+    brandReserve,
+    totalHeight
+  };
+}
+
+function fitCardComposition(ctx, greeting, typography, composition, region) {
+  const sizes = {
+    title: Math.round((greeting.visualStyle === "soft" ? 154 : greeting.visualStyle === "premium" ? 148 : 142) * composition.titleScale),
+    body: Math.round((greeting.visualStyle === "modern" ? 44 : 50) * composition.bodyScale),
+    minTitle: greeting.visualStyle === "modern" ? 74 : 78,
+    minBody: greeting.visualStyle === "modern" ? 28 : 30,
+    maxBodyLines: 6
+  };
+
+  const maxAvailableHeight = region.h - 10;
+  let metrics = measureComposition(ctx, greeting, typography, composition, region, sizes);
+  let guard = 0;
+
+  while (guard < 80) {
+    const bodyTooTall = metrics.bodyLines.length > sizes.maxBodyLines || metrics.bodyHeight > maxAvailableHeight * 0.54;
+    const titleTooTall = metrics.titleHeight > maxAvailableHeight * 0.52;
+    const overflow = metrics.totalHeight - maxAvailableHeight;
+
+    if (overflow <= 0 && !bodyTooTall && !titleTooTall) break;
+
+    if (overflow > 0 || bodyTooTall) {
+      if (sizes.body > sizes.minBody) {
+        sizes.body -= overflow > 36 ? 3 : 2;
+      } else if (sizes.maxBodyLines > 5) {
+        sizes.maxBodyLines -= 1;
+      }
+    }
+
+    if (overflow > 0 || titleTooTall || (metrics.bodyLines.length >= 6 && sizes.title > sizes.minTitle)) {
+      if (sizes.title > sizes.minTitle) {
+        sizes.title -= overflow > 36 ? 3 : 2;
+      }
+    }
+
+    metrics = measureComposition(ctx, greeting, typography, composition, region, sizes);
+    guard += 1;
+  }
+
+  return {
+    ...metrics,
+    titleSize: sizes.title,
+    bodySize: sizes.body,
+    maxBodyLines: sizes.maxBodyLines
+  };
+}
+
 const compositionProfiles = [
   {
     name: "editorial-left",
@@ -516,7 +631,6 @@ function drawSmartTypography(ctx, greeting, region, variantIndex = 0) {
   const typography = styleTypography[greeting.visualStyle];
 
   const useDarkText = region.brightness >= 185 && region.contrast < 78;
-
   const titleColor = useDarkText ? typography.darkTitle : typography.lightTitle;
   const bodyColor = useDarkText ? typography.darkBody : typography.lightBody;
   const accentColor = useDarkText ? typography.darkAccent : typography.lightAccent;
@@ -524,88 +638,55 @@ function drawSmartTypography(ctx, greeting, region, variantIndex = 0) {
   drawFeatheredTextVeil(ctx, region, useDarkText);
 
   const composition = compositionForVariant(variantIndex);
-  const effectiveAlign = composition.alignOverride || region.align;
-  const sidePad = effectiveAlign === "center" ? 24 : 18;
-  const maxWidth = region.w - sidePad * 2;
-  const x = effectiveAlign === "left"
-    ? region.x + sidePad
-    : effectiveAlign === "right"
-      ? region.x + region.w - sidePad
+  const metrics = fitCardComposition(ctx, greeting, typography, composition, region);
+
+  const x = metrics.effectiveAlign === "left"
+    ? region.x + metrics.sidePad
+    : metrics.effectiveAlign === "right"
+      ? region.x + region.w - metrics.sidePad
       : region.x + region.w / 2;
 
   ctx.save();
-  ctx.textAlign = effectiveAlign;
+  ctx.textAlign = metrics.effectiveAlign;
   ctx.textBaseline = "top";
 
-  const titleFit = fitWrappedText(
-    ctx,
-    greeting.title,
-    maxWidth,
-    composition.maxTitleLines,
-    Math.round((greeting.visualStyle === "soft" ? 168 : greeting.visualStyle === "premium" ? 160 : 154) * composition.titleScale),
-    92,
-    typography.titleWeight,
-    typography.titleFamily
-  );
+  let cursorY = region.y + metrics.topPad;
 
-  const titleLineHeight = titleFit.size * (greeting.visualStyle === "premium" ? 0.96 : 0.91);
-  let cursorY = region.y + 10 + composition.yOffset;
-
-  ctx.font = fontString(typography.titleWeight, titleFit.size, typography.titleFamily);
+  ctx.font = fontString(typography.titleWeight, metrics.titleFit.size, typography.titleFamily);
   ctx.fillStyle = titleColor;
-  ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.34)";
-  ctx.shadowBlur = 20;
+  ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.32)";
+  ctx.shadowBlur = 18;
   ctx.shadowOffsetY = 3;
 
-  titleFit.lines.forEach((line, index) => {
-    ctx.fillText(line, x, cursorY + index * titleLineHeight);
+  metrics.titleFit.lines.forEach((line, index) => {
+    ctx.fillText(line, x, cursorY + index * metrics.titleLineHeight);
   });
 
-  cursorY += titleFit.lines.length * titleLineHeight + composition.titleGap;
+  cursorY += metrics.titleHeight + composition.titleGap;
 
-  const brandReserve = 52;
-  const availableBodyHeight = Math.max(220, region.y + region.h - cursorY - brandReserve);
-  let bodySize = Math.round((greeting.visualStyle === "modern" ? 50 : 58) * composition.bodyScale);
-  const minBodySize = greeting.visualStyle === "modern" ? 36 : 38;
-  let bodyLines = [];
-  let bodyLineHeight = 0;
-
-  while (bodySize >= minBodySize) {
-    ctx.font = fontString(typography.bodyWeight, bodySize, typography.bodyFamily);
-    bodyLines = wrapText(ctx, greeting.text, maxWidth);
-    bodyLineHeight = bodySize * (greeting.visualStyle === "modern" ? 1.28 : 1.18);
-
-    if (bodyLines.length * bodyLineHeight <= availableBodyHeight && bodyLines.length <= 7) {
-      break;
-    }
-
-    bodySize -= 2;
-  }
-
-  bodyLines = bodyLines.slice(0, 7);
-  ctx.font = fontString(typography.bodyWeight, bodySize, typography.bodyFamily);
+  ctx.font = fontString(typography.bodyWeight, metrics.bodySize, typography.bodyFamily);
   ctx.fillStyle = bodyColor;
-  ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.27)";
-  ctx.shadowBlur = 10;
+  ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.25)";
+  ctx.shadowBlur = 8;
   ctx.shadowOffsetY = 2;
 
-  bodyLines.forEach((line, index) => {
-    ctx.fillText(line, x, cursorY + index * bodyLineHeight);
+  metrics.bodyLines.forEach((line, index) => {
+    ctx.fillText(line, x, cursorY + index * metrics.bodyLineHeight);
   });
 
   const brandText = 'Создано в «Поздравь»';
-  const brandY = Math.min(region.y + region.h - 28, ctx.canvas.height - 38);
-  const brandSize = 20;
+  const brandY = Math.min(region.y + region.h - 26, ctx.canvas.height - 38);
+  const brandSize = 18;
   ctx.font = fontString(600, brandSize, 'Inter, sans-serif');
   ctx.fillStyle = accentColor;
-  ctx.shadowBlur = 5;
+  ctx.shadowBlur = 4;
 
   let brandX = x;
-  let brandAlign = effectiveAlign;
-  if (effectiveAlign === 'left') {
+  let brandAlign = metrics.effectiveAlign;
+  if (metrics.effectiveAlign === 'left') {
     brandAlign = 'left';
     brandX = region.x + 8;
-  } else if (effectiveAlign === 'right') {
+  } else if (metrics.effectiveAlign === 'right') {
     brandAlign = 'right';
     brandX = region.x + region.w - 8;
   } else {
@@ -615,7 +696,6 @@ function drawSmartTypography(ctx, greeting, region, variantIndex = 0) {
 
   ctx.textAlign = brandAlign;
   ctx.fillText(brandText, brandX, brandY);
-
   ctx.restore();
 }
 
@@ -648,7 +728,7 @@ async function renderVariant(canvas, imageSource, greeting, variantIndex = 0) {
   drawImageCover(ctx, canvas, img);
 
   // Анализ выполняется по чистой фотографии, до любых затемнений и текста.
-  const bestRegion = findBestTextArea(ctx, canvas);
+  const bestRegion = findBestTextArea(ctx, canvas, greeting.title.length + greeting.text.length);
   drawSmartTypography(ctx, greeting, bestRegion, variantIndex);
 }
 
