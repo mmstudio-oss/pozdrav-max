@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#6f4ef6" />
-  <title>Поздравь — v4.2 Big Text</title>
+  <title>Поздравь</title>
   <script src="https://st.max.ru/js/max-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bad+Script&family=Caveat:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Marck+Script&family=Playfair+Display:wght@600;700&display=swap&subset=cyrillic" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bad+Script&family=Caveat:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Lobster&family=Marck+Script&display=swap&subset=cyrillic" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -17,7 +17,7 @@
       <div class="logo" aria-hidden="true">🎁</div>
       <div>
         <h1>Поздравь</h1>
-        <p>Версия 4.2: крупная умная типографика на свободном месте + рукописные шрифты.</p>
+        <p>Открытки по любому поводу</p>
       </div>
     </header>
 
@@ -26,7 +26,7 @@
         <span class="step">1</span>
         <div>
           <h2>Параметры открытки</h2>
-          <p>Можно выбрать фото из вашей облачной базы Timeweb S3 или уникальную AI-генерацию.</p>
+          <p>Выберите фон из базы или уникальную AI-генерацию</p>
         </div>
       </div>
 
@@ -69,7 +69,7 @@
       <label for="details">Пара слов о человеке <span class="optional">(необязательно)</span></label>
       <textarea id="details" maxlength="140" placeholder="Например: любит море, путешествия и кофе"></textarea>
 
-      <button id="generateButton" class="button button-primary">✨ Создать 2–3 варианта</button>
+      <button id="generateButton" class="button button-primary">СОЗДАТЬ</button>
       <p id="statusMessage" class="status" aria-live="polite"></p>
     </section>
 
@@ -78,7 +78,7 @@
         <span class="step">2</span>
         <div>
           <h2>Выбери лучший вариант</h2>
-          <p>Текст автоматически ищет спокойную область фотографии. Каждую открытку можно скачать или отправить в MAX.</p>
+          <p>Текст автоматически ищет свободное место на фотографии. Каждую открытку можно скачать или отправить в MAX.</p>
         </div>
       </div>
       <div id="resultsGrid" class="results-grid"></div>
@@ -101,7 +101,7 @@
     </template>
 
     <footer>
-      Поздравь · v4.2 Big Text · Timeweb S3 + Yandex AI
+      Поздравь · v4.4
     </footer>
   </main>
   <script src="app.js"></script>
