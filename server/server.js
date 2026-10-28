@@ -422,7 +422,7 @@ app.get("/health", (req, res) => {
   res.json({
     ok: true,
     service: "pozdrav-max-api",
-    version: "4.7-safe-text",
+    version: "4.8-title-wrap",
     imageModel: "aliceai-image-art-3.0",
     cloudPhotoLibraryConfigured: Boolean(PHOTO_LIBRARY_MANIFEST_URL),
     multiVariant: true

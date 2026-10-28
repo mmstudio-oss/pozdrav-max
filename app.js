@@ -286,32 +286,14 @@ function textVisualWidth(context, text) {
   return Math.max(metrics.width || 0, left + right);
 }
 
-function splitOversizedWord(context, word, maxWidth) {
-  if (textVisualWidth(context, word) <= maxWidth) return [word];
-
-  const chunks = [];
-  let current = "";
-  for (const char of word) {
-    const candidate = current + char;
-    if (current && textVisualWidth(context, candidate) > maxWidth) {
-      chunks.push(current);
-      current = char;
-    } else {
-      current = candidate;
-    }
-  }
-  if (current) chunks.push(current);
-  return chunks;
-}
-
 function wrapText(context, text, maxWidth) {
-  const rawWords = String(text || "").split(/\s+/).filter(Boolean);
-  const words = rawWords.flatMap((word) => splitOversizedWord(context, word, maxWidth));
+  const words = String(text || "").split(/\s+/).filter(Boolean);
   const lines = [];
   let current = "";
 
   for (const word of words) {
     const candidate = current ? `${current} ${word}` : word;
+
     if (current && textVisualWidth(context, candidate) > maxWidth) {
       lines.push(current);
       current = word;
@@ -429,6 +411,7 @@ function findBestTextArea(ctx, canvas, textLength = 0) {
     { name: "bottom-left",  x: 40,  y: 600, w: 560, h: 670, align: "left" },
     { name: "bottom-right", x: 480, y: 600, w: 560, h: 670, align: "right" },
     { name: "top-center",   x: 92, y: 72,  w: 896, h: 648, align: "center" },
+    { name: "middle-center",x: 92, y: 245, w: 896, h: 720, align: "center" },
     { name: "bottom-center",x: 92, y: 595, w: 896, h: 680, align: "center" }
   ];
 
@@ -439,7 +422,7 @@ function findBestTextArea(ctx, canvas, textLength = 0) {
       getImageDataSafe(ctx, region.x, region.y, region.w, region.h)
     );
 
-    const longText = textLength > 95;
+    const longText = textLength > 62;
     const centerPenalty = region.align === "center" ? (longText ? 0.8 : 5) : 0;
     const bottomPenalty = region.name.startsWith("bottom") ? 1.5 : 0;
     const widthBonus = longText ? region.w * 0.006 : 0;
@@ -505,7 +488,7 @@ function fontString(weight, size, family) {
 }
 
 function fitWrappedText(ctx, text, maxWidth, maxLines, startSize, minSize, weight, family) {
-  const absoluteMin = Math.min(minSize, 54);
+  const absoluteMin = Math.min(minSize, 48);
 
   for (let size = startSize; size >= absoluteMin; size -= 2) {
     ctx.font = fontString(weight, size, family);
@@ -517,12 +500,24 @@ function fitWrappedText(ctx, text, maxWidth, maxLines, startSize, minSize, weigh
     }
   }
 
-  ctx.font = fontString(weight, absoluteMin, family);
-  const fallbackLines = wrapText(ctx, text, maxWidth).slice(0, maxLines);
+  // Если даже минимальный размер не влез — продолжаем уменьшать,
+  // но НИКОГДА не разрываем слово по буквам.
+  for (let size = absoluteMin - 2; size >= 36; size -= 2) {
+    ctx.font = fontString(weight, size, family);
+    const lines = wrapText(ctx, text, maxWidth);
+    const widest = lines.reduce((acc, line) => Math.max(acc, textVisualWidth(ctx, line)), 0);
+
+    if (lines.length <= maxLines && widest <= maxWidth) {
+      return { size, lines, widest };
+    }
+  }
+
+  ctx.font = fontString(weight, 36, family);
+  const lines = wrapText(ctx, text, maxWidth);
   return {
-    size: absoluteMin,
-    lines: fallbackLines,
-    widest: fallbackLines.reduce((acc, line) => Math.max(acc, textVisualWidth(ctx, line)), 0)
+    size: 36,
+    lines,
+    widest: lines.reduce((acc, line) => Math.max(acc, textVisualWidth(ctx, line)), 0)
   };
 }
 
@@ -647,29 +642,29 @@ const compositionProfiles = [
   {
     name: "editorial-left",
     alignOverride: "left",
-    titleScale: 1.12,
+    titleScale: 1.04,
     bodyScale: 1.02,
     titleGap: 30,
     yOffset: 0,
-    maxTitleLines: 3
+    maxTitleLines: 2
   },
   {
     name: "hero-center",
     alignOverride: "center",
-    titleScale: 1.22,
+    titleScale: 1.08,
     bodyScale: 0.96,
     titleGap: 36,
     yOffset: 24,
-    maxTitleLines: 3
+    maxTitleLines: 2
   },
   {
     name: "signature-right",
     alignOverride: "right",
-    titleScale: 1.16,
+    titleScale: 1.05,
     bodyScale: 1.00,
     titleGap: 28,
     yOffset: 8,
-    maxTitleLines: 3
+    maxTitleLines: 2
   }
 ];
 
