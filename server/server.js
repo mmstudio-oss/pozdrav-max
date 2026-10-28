@@ -422,7 +422,7 @@ app.get("/health", (req, res) => {
   res.json({
     ok: true,
     service: "pozdrav-max-api",
-    version: "4-russia",
+    version: "4.1-smart-text",
     imageModel: "aliceai-image-art-3.0",
     cloudPhotoLibraryConfigured: Boolean(PHOTO_LIBRARY_MANIFEST_URL),
     multiVariant: true
@@ -514,5 +514,5 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Pozdrav MAX API v4 Russia запущен на порту ${PORT}`);
+  console.log(`Pozdrav MAX API v4.1 Smart Text запущен на порту ${PORT}`);
 });

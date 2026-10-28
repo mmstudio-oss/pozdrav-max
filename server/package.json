@@ -1,9 +1,9 @@
 {
   "name": "pozdrav-max-api",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "private": true,
   "type": "module",
-  "description": "Поздравь v4 Russia: Timeweb S3 + Yandex AI + MAX",
+  "description": "Поздравь v4.1: Timeweb S3 + Yandex AI + smart typography placement",
   "engines": {
     "node": ">=20"
   },
