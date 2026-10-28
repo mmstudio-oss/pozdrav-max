@@ -1,19 +1,116 @@
-ПОЗДРАВЬ — VERSION 3 ONLINE
-==========================
+ПОЗДРАВЬ — VERSION 4 RUSSIA
+===========================
 
-Локальной базы фотографий больше нет.
+Эта версия использует российские сервисы:
 
-Режимы:
-1. Фото Pixabay — фото ищутся онлайн через Pixabay API.
-2. Yandex AI — Alice AI ART 3.0.
+1. Timeweb Cloud S3 — онлайн-база готовых фотографий.
+2. Yandex AI Studio + Alice AI ART 3.0 — уникальные AI-фоны.
+3. Timeweb App Platform — backend.
 
-Пользователь получает 2 или 3 варианта.
+Freepik в эту версию не включен.
 
-ЧТО ДОБАВИТЬ В TIMEWEB
+ВАЖНО: локальной папки с фотобазой в GitHub нет.
+Фотографии лежат отдельно в Timeweb S3 и могут обновляться без изменения кода приложения.
+
+КАК ЭТО РАБОТАЕТ
+----------------
+Пользователь выбирает:
+
+☁️ Фото из облачной базы
+или
+✨ Yandex AI
+
+Приложение сразу показывает 2 или 3 варианта.
+
+Для облачной базы backend загружает manifest.json из Timeweb S3,
+выбирает случайные фотографии нужной категории и отдает их приложению.
+Canvas накладывает текст и делает готовую открытку.
+
+СТРУКТУРА GITHUB
+-----------------
+index.html
+style.css
+app.js
+manifest.example.json   <- только пример, его надо загрузить в S3 как manifest.json
+README.txt
+server/
+  server.js
+  package.json
+  .env.example
+  .gitignore
+
+1. СОЗДАТЬ S3 В TIMEWEB
 -----------------------
-PIXABAY_API_KEY=ваш_ключ_Pixabay
+Timeweb Cloud -> Хранилище S3 -> Создать.
 
-Оставьте также:
+Выберите публичный бакет.
+Например имя:
+pozdrav-cards
+
+2. СОЗДАТЬ ПАПКИ В БАКЕТЕ
+-------------------------
+Рекомендуемая структура:
+
+birthday/premium/
+birthday/soft/
+birthday/modern/
+
+mother/premium/
+mother/soft/
+mother/modern/
+
+love/premium/
+love/soft/
+love/modern/
+
+morning/premium/
+morning/soft/
+morning/modern/
+
+night/premium/
+night/soft/
+night/modern/
+
+В каждую категорию загрузите хотя бы 3 вертикальных JPG/PNG.
+Лучше 10-30 фотографий на каждую категорию.
+
+3. MANIFEST.JSON
+----------------
+В проекте есть:
+manifest.example.json
+
+Скопируйте его и назовите:
+manifest.json
+
+Если имена ваших файлов отличаются — исправьте их в JSON.
+
+Затем загрузите manifest.json В КОРЕНЬ того же S3-бакета.
+
+Например:
+https://pozdrav-cards.s3.twcstorage.ru/manifest.json
+
+В manifest можно использовать относительные пути:
+
+{
+  "birthday": {
+    "premium": [
+      "birthday/premium/01.jpg",
+      "birthday/premium/02.jpg",
+      "birthday/premium/03.jpg"
+    ]
+  }
+}
+
+Все картинки и manifest.json должны лежать в одном публичном S3-бакете.
+
+4. TIMEWEB APP PLATFORM — ENV
+-----------------------------
+Добавьте:
+
+PHOTO_LIBRARY_MANIFEST_URL=https://ВАШ-БАКЕТ.s3.twcstorage.ru/manifest.json
+
+Также оставьте:
+
 BOT_TOKEN=...
 FRONTEND_ORIGIN=https://ВАШ-ЛОГИН.github.io
 YANDEX_API_KEY=...
@@ -24,33 +121,58 @@ ALLOW_BROWSER_PREVIEW=true
 После тестов внутри MAX:
 ALLOW_BROWSER_PREVIEW=false
 
-КАК ПОЛУЧИТЬ PIXABAY_API_KEY
-----------------------------
-Откройте https://pixabay.com/api/docs/ и войдите в аккаунт Pixabay.
-Скопируйте свой API key. Не публикуйте его в GitHub.
+5. APP.JS
+---------
+В app.js вставьте адрес backend:
 
-TIMEWEB
--------
-Папка проекта: server
-Build: npm install
-Start: npm start
-Health check: /health
+const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
 
-После загрузки файлов в GitHub сделайте Redeploy.
+Например:
 
-ПРОВЕРКА
---------
+const API_BASE_URL = "https://pozdrav-max-api-xxxx.twc1.net";
+
+6. TIMEWEB APP PLATFORM
+-----------------------
+Project directory:
+server
+
+Build:
+npm install
+
+Start:
+npm start
+
+Health check:
+/health
+
+После загрузки новых файлов в GitHub сделайте Redeploy.
+
+7. ПРОВЕРКА
+-----------
+Откройте:
+
 https://ВАШ-BACKEND/health
 
-Ожидается:
+Должно быть примерно:
+
 {
   "ok": true,
   "service": "pozdrav-max-api",
-  "version": "3-online",
+  "version": "4-russia",
   "imageModel": "aliceai-image-art-3.0",
-  "pixabayConfigured": true,
+  "cloudPhotoLibraryConfigured": true,
   "multiVariant": true
 }
 
-В этой версии нет backgrounds.json и assets/backgrounds/.
-Frontend не получает PIXABAY_API_KEY. Поиск идёт через Timeweb, результаты поиска кешируются сервером на 24 часа, а выбранные изображения Timeweb скачивает перед передачей в приложение.
+Если:
+"cloudPhotoLibraryConfigured": false
+
+значит PHOTO_LIBRARY_MANIFEST_URL не задан в Timeweb.
+
+8. ВАЖНО ПРО АВТОРСКИЕ ПРАВА
+-----------------------------
+Загружайте в свою S3-базу только фотографии, которые вы имеете право использовать:
+ваши собственные, купленные по подходящей лицензии или разрешенные для такого использования.
+
+Преимущество этой версии: внешний фотосток не может заблокировать приложение Cloudflare,
+а база открыток полностью под вашим контролем.

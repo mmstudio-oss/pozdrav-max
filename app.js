@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://mmstudio-oss-pozdrav-max-5bd2.twc1.net";
+const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
 
 const occasionInput = document.getElementById("occasion");
 const visualStyleInput = document.getElementById("visualStyle");
@@ -192,7 +192,10 @@ function buildGreeting() {
 }
 
 async function getPhotoVariants(greeting, count) {
-  if (!backendConfigured()) throw new Error("Сначала вставьте адрес backend Timeweb в app.js.");
+  if (!backendConfigured()) {
+    throw new Error("Сначала вставьте адрес backend Timeweb в app.js.");
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/photo-variants`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -203,14 +206,20 @@ async function getPhotoVariants(greeting, count) {
       variantCount: count
     })
   });
+
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || `Ошибка сервера ${response.status}`);
-  if (!Array.isArray(result.images) || !result.images.length) throw new Error("Сервер не вернул фотографии Pixabay.");
+
+  if (!response.ok) {
+    throw new Error(result.error || `Ошибка сервера ${response.status}`);
+  }
+
+  if (!Array.isArray(result.images) || !result.images.length) {
+    throw new Error("Сервер не вернул фотографии из облачной базы.");
+  }
+
   return result.images.map((item) => ({
     imageData: item.imageData,
-    sourceLabel: "Pixabay",
-    author: item.author || "Автор",
-    pageUrl: item.pageUrl || "https://pixabay.com/"
+    sourceLabel: "Облако"
   }));
 }
 
@@ -358,6 +367,9 @@ function drawTitleAndBody(ctx, greeting) {
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    if (/^https?:\/\//i.test(src)) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("Не удалось загрузить изображение."));
     img.src = src;
@@ -413,20 +425,12 @@ function createVariantCard(index, item) {
   const canvas = node.querySelector("canvas");
   const title = node.querySelector(".variant-title");
   const label = node.querySelector(".variant-source");
+
   title.textContent = `Вариант ${index + 1}`;
   label.textContent = item.sourceLabel;
-  if (item.sourceLabel === "Pixabay") {
-    const credit = document.createElement("div");
-    credit.className = "photo-credit";
-    const link = document.createElement("a");
-    link.href = item.pageUrl || "https://pixabay.com/";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = `Фото: ${item.author || "Автор"} · Pixabay`;
-    credit.appendChild(link);
-    node.querySelector(".canvas-wrap").insertAdjacentElement("afterend", credit);
-  }
+
   resultsGrid.appendChild(node);
+
   return {
     node,
     canvas,
@@ -440,7 +444,7 @@ async function buildVariants() {
   const count = Math.min(3, Math.max(2, Number(variantCountInput.value || 2)));
   const mode = sourceModeInput.value;
   clearResults();
-  setStatus(mode === "ai" ? "Генерируем 2–3 AI-варианта…" : "Ищем 2–3 подходящих фото в Pixabay…");
+  setStatus(mode === "ai" ? "Генерируем 2–3 AI-варианта…" : "Берём 2–3 фото из облачной базы…");
 
   const items = mode === "ai"
     ? await getAIVariants(greeting, count)
@@ -451,7 +455,7 @@ async function buildVariants() {
     const card = createVariantCard(i, item);
     await renderVariant(card.canvas, item.imageData, greeting);
 
-    card.downloadButton.addEventListener("click", () => {
+    card.downloadButton.addEventListener("click", async () => {
       const link = document.createElement("a");
       link.download = cardFileName(greeting, i);
       link.href = card.canvas.toDataURL("image/png");

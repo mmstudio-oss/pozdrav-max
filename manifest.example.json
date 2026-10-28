@@ -1,0 +1,87 @@
+{
+  "birthday": {
+    "premium": [
+      "birthday/premium/01.jpg",
+      "birthday/premium/02.jpg",
+      "birthday/premium/03.jpg"
+    ],
+    "soft": [
+      "birthday/soft/01.jpg",
+      "birthday/soft/02.jpg",
+      "birthday/soft/03.jpg"
+    ],
+    "modern": [
+      "birthday/modern/01.jpg",
+      "birthday/modern/02.jpg",
+      "birthday/modern/03.jpg"
+    ]
+  },
+  "mother": {
+    "premium": [
+      "mother/premium/01.jpg",
+      "mother/premium/02.jpg",
+      "mother/premium/03.jpg"
+    ],
+    "soft": [
+      "mother/soft/01.jpg",
+      "mother/soft/02.jpg",
+      "mother/soft/03.jpg"
+    ],
+    "modern": [
+      "mother/modern/01.jpg",
+      "mother/modern/02.jpg",
+      "mother/modern/03.jpg"
+    ]
+  },
+  "love": {
+    "premium": [
+      "love/premium/01.jpg",
+      "love/premium/02.jpg",
+      "love/premium/03.jpg"
+    ],
+    "soft": [
+      "love/soft/01.jpg",
+      "love/soft/02.jpg",
+      "love/soft/03.jpg"
+    ],
+    "modern": [
+      "love/modern/01.jpg",
+      "love/modern/02.jpg",
+      "love/modern/03.jpg"
+    ]
+  },
+  "morning": {
+    "premium": [
+      "morning/premium/01.jpg",
+      "morning/premium/02.jpg",
+      "morning/premium/03.jpg"
+    ],
+    "soft": [
+      "morning/soft/01.jpg",
+      "morning/soft/02.jpg",
+      "morning/soft/03.jpg"
+    ],
+    "modern": [
+      "morning/modern/01.jpg",
+      "morning/modern/02.jpg",
+      "morning/modern/03.jpg"
+    ]
+  },
+  "night": {
+    "premium": [
+      "night/premium/01.jpg",
+      "night/premium/02.jpg",
+      "night/premium/03.jpg"
+    ],
+    "soft": [
+      "night/soft/01.jpg",
+      "night/soft/02.jpg",
+      "night/soft/03.jpg"
+    ],
+    "modern": [
+      "night/modern/01.jpg",
+      "night/modern/02.jpg",
+      "night/modern/03.jpg"
+    ]
+  }
+}
