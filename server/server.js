@@ -8,7 +8,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN || "";
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "";
 const YANDEX_API_KEY = process.env.YANDEX_API_KEY || "";
 const YANDEX_FOLDER_ID = process.env.YANDEX_FOLDER_ID || "";
-const PIXABAY_API_KEY = process.env.PIXABAY_API_KEY || "";
+const PHOTO_LIBRARY_MANIFEST_URL = process.env.PHOTO_LIBRARY_MANIFEST_URL || "";
 const ALLOW_BROWSER_AI_GENERATION = String(process.env.ALLOW_BROWSER_PREVIEW || process.env.ALLOW_BROWSER_AI_GENERATION || "false").toLowerCase() === "true";
 const INIT_DATA_MAX_AGE_SECONDS = Number(process.env.INIT_DATA_MAX_AGE_SECONDS || 86400);
 
@@ -28,8 +28,8 @@ app.use(cors({
 app.use(express.json({ limit: "20mb" }));
 
 const rateMap = new Map();
-const pixabayCache = new Map();
-const PIXABAY_CACHE_MS = 24 * 60 * 60 * 1000;
+let photoManifestCache = null;
+const PHOTO_MANIFEST_CACHE_MS = 10 * 60 * 1000;
 function rateAllowed(key, maxRequests, windowMs) {
   const now = Date.now();
   const current = rateMap.get(key);
@@ -185,14 +185,6 @@ async function generateOneImageWithYandex({ occasion, visualStyle, recipientName
 }
 
 
-const pixabayQueries = {
-  birthday: { premium: "luxury birthday flowers celebration elegant", soft: "pastel flowers celebration soft", modern: "elegant celebration lights minimal" },
-  mother: { premium: "peonies flowers elegant luxury", soft: "pastel flowers peonies soft", modern: "flowers minimal elegant bouquet" },
-  love: { premium: "romantic flowers lights elegant", soft: "pink flowers romantic soft", modern: "romantic sunset minimal elegant" },
-  morning: { premium: "morning coffee sunlight flowers", soft: "soft morning light flowers", modern: "morning window coffee minimal" },
-  night: { premium: "moon night sky dreamy", soft: "moon stars night dreamy", modern: "dark night city lights elegant" }
-};
-function getPixabayQuery(occasion, visualStyle) { return pixabayQueries?.[occasion]?.[visualStyle] || pixabayQueries.birthday.premium; }
 function shuffle(items) {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -201,50 +193,160 @@ function shuffle(items) {
   }
   return copy;
 }
-async function searchPixabay(occasion, visualStyle) {
-  if (!PIXABAY_API_KEY) throw new Error("Pixabay не настроен: добавьте PIXABAY_API_KEY в Timeweb.");
-  const query = getPixabayQuery(occasion, visualStyle);
-  const cacheKey = `${occasion}:${visualStyle}:${query}`;
-  const cached = pixabayCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.hits;
-  const params = new URLSearchParams({
-    key: PIXABAY_API_KEY, q: query, image_type: "photo", orientation: "vertical",
-    safesearch: "true", order: "popular", min_width: "800", min_height: "1000", per_page: "60", page: "1"
+
+function validateManifestUrl() {
+  if (!PHOTO_LIBRARY_MANIFEST_URL) {
+    throw new Error("Облачная база фото не настроена: добавьте PHOTO_LIBRARY_MANIFEST_URL в Timeweb.");
+  }
+
+  let url;
+  try {
+    url = new URL(PHOTO_LIBRARY_MANIFEST_URL);
+  } catch {
+    throw new Error("PHOTO_LIBRARY_MANIFEST_URL содержит некорректный URL.");
+  }
+
+  if (url.protocol !== "https:") {
+    throw new Error("PHOTO_LIBRARY_MANIFEST_URL должен начинаться с https://");
+  }
+
+  return url;
+}
+
+async function loadPhotoManifest() {
+  const manifestUrl = validateManifestUrl();
+
+  if (photoManifestCache && photoManifestCache.expiresAt > Date.now()) {
+    return photoManifestCache;
+  }
+
+  const response = await fetch(manifestUrl, {
+    headers: { Accept: "application/json" }
   });
-  const response = await fetch(`https://pixabay.com/api/?${params.toString()}`, { headers: { Accept: "application/json" } });
+
   const raw = await response.text();
-  let data = {};
-  if (raw) { try { data = JSON.parse(raw); } catch { data = { raw }; } }
-  if (!response.ok) throw new Error(`Pixabay API: ${data?.message || data?.error || raw || response.status}`);
-  const hits = Array.isArray(data?.hits) ? data.hits : [];
-  if (!hits.length) throw new Error("Pixabay не нашёл подходящих фотографий.");
-  pixabayCache.set(cacheKey, { hits, expiresAt: Date.now() + PIXABAY_CACHE_MS });
-  return hits;
+
+  if (!response.ok) {
+    throw new Error(`Не удалось загрузить manifest.json из S3: HTTP ${response.status}`);
+  }
+
+  if (raw.length > 1024 * 1024) {
+    throw new Error("manifest.json слишком большой.");
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(raw);
+  } catch {
+    throw new Error("manifest.json содержит некорректный JSON.");
+  }
+
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+    throw new Error("manifest.json имеет неправильную структуру.");
+  }
+
+  photoManifestCache = {
+    manifest,
+    manifestUrl,
+    origin: manifestUrl.origin,
+    expiresAt: Date.now() + PHOTO_MANIFEST_CACHE_MS
+  };
+
+  return photoManifestCache;
 }
-async function downloadPixabayImage(hit) {
-  const url = hit?.largeImageURL || hit?.webformatURL;
-  if (!url) throw new Error("Pixabay не вернул URL фотографии.");
-  const response = await fetch(url, { headers: { Accept: "image/*" } });
-  if (!response.ok) throw new Error(`Не удалось скачать фото Pixabay: ${response.status}`);
+
+function getManifestEntries(manifest, occasion, visualStyle) {
+  const exact = manifest?.[occasion]?.[visualStyle];
+  if (Array.isArray(exact) && exact.length) return exact;
+
+  const occasionBlock = manifest?.[occasion];
+  if (occasionBlock && typeof occasionBlock === "object") {
+    const combined = Object.values(occasionBlock)
+      .filter(Array.isArray)
+      .flat();
+    if (combined.length) return combined;
+  }
+
+  const fallback = manifest?.default;
+  if (Array.isArray(fallback) && fallback.length) return fallback;
+
+  return [];
+}
+
+function resolvePhotoUrl(entry, manifestUrl, allowedOrigin) {
+  const raw = typeof entry === "string" ? entry : entry?.url || entry?.file;
+
+  if (!raw || typeof raw !== "string") {
+    throw new Error("В manifest.json найдено некорректное описание фотографии.");
+  }
+
+  let url;
+  try {
+    url = new URL(raw, manifestUrl);
+  } catch {
+    throw new Error("В manifest.json найден некорректный URL фотографии.");
+  }
+
+  if (url.protocol !== "https:") {
+    throw new Error("Фотографии в облачной базе должны быть доступны по HTTPS.");
+  }
+
+  if (url.origin !== allowedOrigin) {
+    throw new Error("Фотографии должны находиться в том же S3-домене, что и manifest.json.");
+  }
+
+  return url;
+}
+
+async function downloadCloudPhoto(url) {
+  const response = await fetch(url, {
+    headers: { Accept: "image/*" }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Не удалось скачать фото из S3: HTTP ${response.status}`);
+  }
+
   const contentType = response.headers.get("content-type") || "image/jpeg";
-  if (!contentType.startsWith("image/")) throw new Error("Pixabay вернул не изображение.");
+  if (!contentType.startsWith("image/")) {
+    throw new Error("Объект в S3 не является изображением.");
+  }
+
   const buffer = Buffer.from(await response.arrayBuffer());
-  if (buffer.length === 0 || buffer.length > 12 * 1024 * 1024) throw new Error("Фото Pixabay пустое или слишком большое.");
-  return { imageData: `data:${contentType};base64,${buffer.toString("base64")}`, author: String(hit?.user || "Автор Pixabay"), pageUrl: String(hit?.pageURL || "https://pixabay.com/") };
+  if (buffer.length === 0 || buffer.length > 12 * 1024 * 1024) {
+    throw new Error("Фото из S3 пустое или слишком большое.");
+  }
+
+  return `data:${contentType};base64,${buffer.toString("base64")}`;
 }
-async function getPixabayVariants({ occasion, visualStyle, variantCount }) {
-  const hits = await searchPixabay(occasion, visualStyle);
-  const candidates = shuffle(hits).slice(0, Math.max(12, variantCount * 4));
+
+async function getCloudPhotoVariants({ occasion, visualStyle, variantCount }) {
+  const loaded = await loadPhotoManifest();
+  const entries = getManifestEntries(loaded.manifest, occasion, visualStyle);
+
+  if (entries.length < variantCount) {
+    throw new Error(`В облачной базе недостаточно фото для ${occasion}/${visualStyle}. Нужно минимум ${variantCount}.`);
+  }
+
+  const candidates = shuffle(entries);
   const images = [];
-  for (const hit of candidates) {
+
+  for (const entry of candidates) {
+    if (images.length >= variantCount) break;
+
     try {
-      images.push(await downloadPixabayImage(hit));
-      if (images.length >= variantCount) break;
+      const url = resolvePhotoUrl(entry, loaded.manifestUrl, loaded.origin);
+      const imageData = await downloadCloudPhoto(url);
+      images.push({ imageData });
     } catch (error) {
-      console.warn("Не удалось загрузить одно фото Pixabay:", error.message);
+      console.warn("Пропускаем фото из облачной базы:", error.message);
     }
   }
-  if (images.length < variantCount) throw new Error("Не удалось скачать достаточно фотографий Pixabay. Попробуйте ещё раз.");
+
+  if (images.length < variantCount) {
+    throw new Error("Не удалось загрузить достаточно фотографий из облачной базы.");
+  }
+
   return images;
 }
 
@@ -317,19 +419,34 @@ async function sendImageToUser({ userId, token, caption }) {
 }
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "pozdrav-max-api", version: "3-online", imageModel: "aliceai-image-art-3.0", pixabayConfigured: Boolean(PIXABAY_API_KEY), multiVariant: true });
+  res.json({
+    ok: true,
+    service: "pozdrav-max-api",
+    version: "4-russia",
+    imageModel: "aliceai-image-art-3.0",
+    cloudPhotoLibraryConfigured: Boolean(PHOTO_LIBRARY_MANIFEST_URL),
+    multiVariant: true
+  });
 });
-
 
 app.post("/api/photo-variants", async (req, res) => {
   try {
     const { initData, occasion = "birthday", visualStyle = "premium", variantCount = 3 } = req.body || {};
     const auth = validateOrUseBrowserMode(initData);
     const count = Math.min(3, Math.max(2, Number(variantCount || 3)));
-    const rateKey = `pixabay:${auth.userId}`;
-    if (!rateAllowed(rateKey, 20, 10 * 60 * 1000)) return res.status(429).json({ error: "Слишком много запросов к базе фото. Попробуйте через несколько минут." });
-    const images = await getPixabayVariants({ occasion, visualStyle, variantCount: count });
-    res.json({ ok: true, provider: "pixabay", images });
+    const rateKey = `cloud-photos:${auth.userId}`;
+
+    if (!rateAllowed(rateKey, 30, 10 * 60 * 1000)) {
+      return res.status(429).json({ error: "Слишком много запросов к фотобазе. Попробуйте через несколько минут." });
+    }
+
+    const images = await getCloudPhotoVariants({
+      occasion,
+      visualStyle,
+      variantCount: count
+    });
+
+    res.json({ ok: true, provider: "timeweb-s3", images });
   } catch (error) {
     console.error(error);
     const message = error instanceof Error ? error.message : "Внутренняя ошибка сервера.";
@@ -397,5 +514,5 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Pozdrav MAX API v3 Online запущен на порту ${PORT}`);
+  console.log(`Pozdrav MAX API v4 Russia запущен на порту ${PORT}`);
 });
