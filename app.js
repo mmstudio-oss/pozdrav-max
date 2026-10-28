@@ -160,7 +160,7 @@ function typographyForVariant(visualStyle, variantIndex = 0) {
   };
 }
 
-function setStatusfunction setStatus(text, isError = false) {
+function setStatus(text, isError = false) {
   statusMessage.textContent = text;
   statusMessage.classList.toggle("error", isError);
 }
@@ -234,7 +234,7 @@ function buildGreeting() {
   return { occasion, visualStyle, name, details, title: titleFor(occasion, name), text, readyMode };
 }
 
-async function getPhotoVariantsasync function getPhotoVariants(greeting, count) {
+async function getPhotoVariants(greeting, count) {
   if (!backendConfigured()) {
     throw new Error("Сначала вставьте адрес backend Timeweb в app.js.");
   }
@@ -927,7 +927,7 @@ async function buildVariants() {
   setStatus("Готово! Выберите лучший вариант или создайте новые.");
 }
 
-async function handleGenerateasync function handleGenerate() {
+async function handleGenerate() {
   generateButton.disabled = true;
   try {
     await buildVariants();
