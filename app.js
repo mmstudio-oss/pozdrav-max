@@ -6,6 +6,7 @@ const sourceModeInput = document.getElementById("sourceMode");
 const variantCountInput = document.getElementById("variantCount");
 const nameInput = document.getElementById("name");
 const detailsInput = document.getElementById("details");
+const personalFields = document.getElementById("personalFields");
 const generateButton = document.getElementById("generateButton");
 const statusMessage = document.getElementById("statusMessage");
 const resultsSection = document.getElementById("resultsSection");
@@ -103,14 +104,8 @@ const textVariants = {
   }
 };
 
-const styleTypography = {
+const typographyColors = {
   premium: {
-    titleFamily: '"Lobster", cursive',
-    titleWeight: 400,
-    bodyFamily: '"Cormorant Garamond", serif',
-    bodyWeight: 600,
-    accentFamily: 'Inter, sans-serif',
-    accentWeight: 600,
     lightTitle: '#fff8ef',
     lightBody: 'rgba(255,250,243,0.98)',
     lightAccent: 'rgba(255,248,238,0.72)',
@@ -119,12 +114,6 @@ const styleTypography = {
     darkAccent: 'rgba(43,32,31,0.62)'
   },
   soft: {
-    titleFamily: '"Marck Script", cursive',
-    titleWeight: 400,
-    bodyFamily: '"Cormorant Garamond", serif',
-    bodyWeight: 600,
-    accentFamily: 'Inter, sans-serif',
-    accentWeight: 600,
     lightTitle: '#fffaf7',
     lightBody: 'rgba(255,252,248,0.98)',
     lightAccent: 'rgba(255,252,247,0.72)',
@@ -133,12 +122,6 @@ const styleTypography = {
     darkAccent: 'rgba(58,42,48,0.62)'
   },
   modern: {
-    titleFamily: '"Caveat", cursive',
-    titleWeight: 700,
-    bodyFamily: 'Inter, sans-serif',
-    bodyWeight: 500,
-    accentFamily: 'Inter, sans-serif',
-    accentWeight: 600,
     lightTitle: '#ffffff',
     lightBody: 'rgba(255,255,255,0.97)',
     lightAccent: 'rgba(255,255,255,0.72)',
@@ -148,7 +131,36 @@ const styleTypography = {
   }
 };
 
-function setStatus(text, isError = false) {
+const typographyPresets = {
+  premium: [
+    { titleFamily: '"Lobster", cursive', titleWeight: 400, bodyFamily: '"Cormorant Garamond", serif', bodyWeight: 600 },
+    { titleFamily: '"Pacifico", cursive', titleWeight: 400, bodyFamily: '"PT Serif", serif', bodyWeight: 400 },
+    { titleFamily: '"Marck Script", cursive', titleWeight: 400, bodyFamily: '"Prata", serif', bodyWeight: 400 }
+  ],
+  soft: [
+    { titleFamily: '"Bad Script", cursive', titleWeight: 400, bodyFamily: '"Cormorant Garamond", serif', bodyWeight: 600 },
+    { titleFamily: '"Marck Script", cursive', titleWeight: 400, bodyFamily: '"PT Serif", serif', bodyWeight: 400 },
+    { titleFamily: '"Neucha", cursive', titleWeight: 400, bodyFamily: '"Prata", serif', bodyWeight: 400 }
+  ],
+  modern: [
+    { titleFamily: '"Caveat", cursive', titleWeight: 700, bodyFamily: 'Inter, sans-serif', bodyWeight: 500 },
+    { titleFamily: '"Pangolin", cursive', titleWeight: 400, bodyFamily: '"PT Serif", serif', bodyWeight: 400 },
+    { titleFamily: '"Neucha", cursive', titleWeight: 400, bodyFamily: 'Inter, sans-serif', bodyWeight: 500 }
+  ]
+};
+
+function typographyForVariant(visualStyle, variantIndex = 0) {
+  const presets = typographyPresets[visualStyle] || typographyPresets.premium;
+  const preset = presets[variantIndex % presets.length];
+  return {
+    ...(typographyColors[visualStyle] || typographyColors.premium),
+    ...preset,
+    accentFamily: 'Inter, sans-serif',
+    accentWeight: 600
+  };
+}
+
+function setStatusfunction setStatus(text, isError = false) {
   statusMessage.textContent = text;
   statusMessage.classList.toggle("error", isError);
 }
@@ -210,18 +222,19 @@ function titleFor(occasion, name) {
 function buildGreeting() {
   const occasion = occasionInput.value;
   const visualStyle = visualStyleInput.value;
-  const name = nameInput.value.trim();
-  const details = compactSentence(detailsInput.value.trim(), 56);
+  const readyMode = sourceModeInput.value === "ready";
+  const name = readyMode ? "" : nameInput.value.trim();
+  const details = readyMode ? "" : compactSentence(detailsInput.value.trim(), 56);
   let text = chooseVariant(textVariants[occasion][visualStyle]);
   if (details) {
     text += ` Пусть рядом будет всё, что тебе особенно дорого: ${details.toLowerCase()}.`;
   }
 
   text = compactSentence(text, 170);
-  return { occasion, visualStyle, name, details, title: titleFor(occasion, name), text };
+  return { occasion, visualStyle, name, details, title: titleFor(occasion, name), text, readyMode };
 }
 
-async function getPhotoVariants(greeting, count) {
+async function getPhotoVariantsasync function getPhotoVariants(greeting, count) {
   if (!backendConfigured()) {
     throw new Error("Сначала вставьте адрес backend Timeweb в app.js.");
   }
@@ -250,6 +263,35 @@ async function getPhotoVariants(greeting, count) {
   return result.images.map((item) => ({
     imageData: item.imageData,
     sourceLabel: "Облако"
+  }));
+}
+
+async function getReadyCardVariants(greeting, count) {
+  if (!backendConfigured()) {
+    throw new Error("Сначала вставьте адрес backend Timeweb в app.js.");
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/ready-card-variants`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      initData: getMaxInitData(),
+      occasion: greeting.occasion,
+      visualStyle: greeting.visualStyle,
+      variantCount: count
+    })
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `Ошибка сервера ${response.status}`);
+  if (!Array.isArray(result.images) || !result.images.length) {
+    throw new Error("Сервер не вернул готовые открытки из базы.");
+  }
+
+  return result.images.map((item) => ({
+    imageData: item.imageData,
+    sourceLabel: "Готовая открытка",
+    readyMade: true
   }));
 }
 
@@ -673,7 +715,7 @@ function compositionForVariant(index) {
 }
 
 function drawSmartTypography(ctx, greeting, region, variantIndex = 0) {
-  const typography = styleTypography[greeting.visualStyle];
+  const typography = typographyForVariant(greeting.visualStyle, variantIndex);
 
   const useDarkText = region.brightness >= 185 && region.contrast < 78;
   const titleColor = useDarkText ? typography.darkTitle : typography.lightTitle;
@@ -761,6 +803,21 @@ async function renderVariant(canvas, imageSource, greeting, variantIndex = 0) {
   drawSmartTypography(ctx, greeting, bestRegion, variantIndex);
 }
 
+async function renderReadyVariant(canvas, imageSource) {
+  const ctx = canvas.getContext("2d");
+  const img = await loadImage(imageSource);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#f7f4ef";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+  const width = img.width * scale;
+  const height = img.height * scale;
+  const x = (canvas.width - width) / 2;
+  const y = (canvas.height - height) / 2;
+  ctx.drawImage(img, x, y, width, height);
+}
+
 function cardFileName(greeting, idx) {
   const base = (greeting.name || greeting.occasion || "otkrytka")
     .trim().toLowerCase().replace(/[^a-zа-яё0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "otkrytka";
@@ -819,16 +876,26 @@ async function buildVariants() {
   const count = Math.min(3, Math.max(2, Number(variantCountInput.value || 2)));
   const mode = sourceModeInput.value;
   clearResults();
-  setStatus(mode === "ai" ? "Генерируем 2–3 AI-варианта…" : "Берём 2–3 фото из облачной базы…");
+  setStatus(
+    mode === "ai"
+      ? "Генерируем 2–3 AI-варианта…"
+      : mode === "ready"
+        ? "Берём 2–3 готовые открытки из базы…"
+        : "Берём 2–3 фото из облачной базы…"
+  );
 
   const items = mode === "ai"
     ? await getAIVariants(greeting, count)
-    : await getPhotoVariants(greeting, count);
+    : mode === "ready"
+      ? await getReadyCardVariants(greeting, count)
+      : await getPhotoVariants(greeting, count);
 
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i];
     const card = createVariantCard(i, item);
-    await renderVariant(card.canvas, item.imageData, greeting, i);
+    item.readyMade
+      ? await renderReadyVariant(card.canvas, item.imageData)
+      : await renderVariant(card.canvas, item.imageData, greeting, i);
 
     card.downloadButton.addEventListener("click", async () => {
       const link = document.createElement("a");
@@ -860,7 +927,7 @@ async function buildVariants() {
   setStatus("Готово! Выберите лучший вариант или создайте новые.");
 }
 
-async function handleGenerate() {
+async function handleGenerateasync function handleGenerate() {
   generateButton.disabled = true;
   try {
     await buildVariants();
@@ -871,6 +938,19 @@ async function handleGenerate() {
     generateButton.disabled = false;
   }
 }
+
+function updateSourceModeUi() {
+  const readyMode = sourceModeInput.value === "ready";
+  personalFields.classList.toggle("hidden", readyMode);
+
+  if (readyMode) {
+    nameInput.value = "";
+    detailsInput.value = "";
+  }
+}
+
+sourceModeInput.addEventListener("change", updateSourceModeUi);
+updateSourceModeUi();
 
 generateButton.addEventListener("click", handleGenerate);
 nameInput.addEventListener("keydown", (event) => { if (event.key === "Enter") handleGenerate(); });
