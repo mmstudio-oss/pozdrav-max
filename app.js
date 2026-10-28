@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://mmstudio-oss-pozdrav-max-5bd2.twc1.net";
+const API_BASE_URL = "https://YOUR-TIMEWEB-BACKEND";
 
 const occasionInput = document.getElementById("occasion");
 const visualStyleInput = document.getElementById("visualStyle");
@@ -105,28 +105,46 @@ const textVariants = {
 
 const styleTypography = {
   premium: {
-    titleFamily: '"Playfair Display", serif',
-    bodyFamily: 'Inter, sans-serif',
-    titleColor: '#fff7ef',
-    bodyColor: 'rgba(255,250,243,0.96)',
-    tagColor: 'rgba(255,249,240,0.74)',
-    align: 'center'
+    titleFamily: '"Marck Script", cursive',
+    titleWeight: 400,
+    bodyFamily: '"Cormorant Garamond", serif',
+    bodyWeight: 600,
+    accentFamily: 'Inter, sans-serif',
+    accentWeight: 700,
+    lightTitle: '#fff8ef',
+    lightBody: 'rgba(255,250,243,0.98)',
+    lightAccent: 'rgba(255,248,238,0.78)',
+    darkTitle: '#332322',
+    darkBody: 'rgba(43,32,31,0.96)',
+    darkAccent: 'rgba(43,32,31,0.70)'
   },
   soft: {
-    titleFamily: '"Cormorant Garamond", serif',
-    bodyFamily: 'Inter, sans-serif',
-    titleColor: '#fffaf6',
-    bodyColor: 'rgba(255,252,247,0.97)',
-    tagColor: 'rgba(255,252,247,0.76)',
-    align: 'center'
+    titleFamily: '"Bad Script", cursive',
+    titleWeight: 400,
+    bodyFamily: '"Cormorant Garamond", serif',
+    bodyWeight: 600,
+    accentFamily: 'Inter, sans-serif',
+    accentWeight: 600,
+    lightTitle: '#fffaf7',
+    lightBody: 'rgba(255,252,248,0.98)',
+    lightAccent: 'rgba(255,252,247,0.78)',
+    darkTitle: '#4a303b',
+    darkBody: 'rgba(58,42,48,0.96)',
+    darkAccent: 'rgba(58,42,48,0.68)'
   },
   modern: {
-    titleFamily: '"Prata", serif',
+    titleFamily: '"Caveat", cursive',
+    titleWeight: 700,
     bodyFamily: 'Inter, sans-serif',
-    titleColor: '#ffffff',
-    bodyColor: 'rgba(255,255,255,0.96)',
-    tagColor: 'rgba(255,255,255,0.70)',
-    align: 'left'
+    bodyWeight: 500,
+    accentFamily: 'Inter, sans-serif',
+    accentWeight: 700,
+    lightTitle: '#ffffff',
+    lightBody: 'rgba(255,255,255,0.97)',
+    lightAccent: 'rgba(255,255,255,0.72)',
+    darkTitle: '#17191f',
+    darkBody: 'rgba(23,25,31,0.94)',
+    darkAccent: 'rgba(23,25,31,0.68)'
   }
 };
 
@@ -290,77 +308,286 @@ function drawImageCover(ctx, canvas, img) {
   ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 }
 
-function drawOverlay(ctx, canvas, styleKey) {
-  const top = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  top.addColorStop(0, "rgba(0,0,0,0.02)");
-  top.addColorStop(0.38, "rgba(0,0,0,0.08)");
-  top.addColorStop(0.70, "rgba(0,0,0,0.18)");
-  top.addColorStop(1, styleKey === "soft" ? "rgba(43,28,30,0.46)" : "rgba(8,8,16,0.54)");
-  ctx.fillStyle = top;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  const radial = ctx.createRadialGradient(canvas.width * 0.5, canvas.height * 0.22, 40, canvas.width * 0.5, canvas.height * 0.22, canvas.width * 0.75);
-  radial.addColorStop(0, "rgba(255,255,255,0.07)");
-  radial.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = radial;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+function getImageDataSafe(ctx, x, y, width, height) {
+  try {
+    return ctx.getImageData(
+      Math.max(0, Math.round(x)),
+      Math.max(0, Math.round(y)),
+      Math.max(1, Math.round(width)),
+      Math.max(1, Math.round(height))
+    );
+  } catch (error) {
+    console.warn("Не удалось проанализировать область изображения:", error);
+    return null;
+  }
 }
 
-function drawTagLine(ctx, greeting, typography) {
-  const labelMap = {
-    birthday: "BIRTHDAY",
-    mother: "WITH LOVE",
-    love: "LOVE",
-    morning: "GOOD MORNING",
-    night: "GOOD NIGHT"
+function analyzeRegion(imageData) {
+  if (!imageData) {
+    return { score: Number.MAX_SAFE_INTEGER, brightness: 110, contrast: 100 };
+  }
+
+  const { data, width, height } = imageData;
+  const step = 6;
+  let samples = 0;
+  let brightnessSum = 0;
+  let brightnessSqSum = 0;
+  let localEdges = 0;
+  let saturationSum = 0;
+
+  const brightnessAt = (x, y) => {
+    const i = (y * width + x) * 4;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    return 0.299 * r + 0.587 * g + 0.114 * b;
   };
+
+  for (let y = 0; y < height - step; y += step) {
+    for (let x = 0; x < width - step; x += step) {
+      const i = (y * width + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const value = 0.299 * r + 0.587 * g + 0.114 * b;
+      const right = brightnessAt(x + step, y);
+      const down = brightnessAt(x, y + step);
+      const maxC = Math.max(r, g, b);
+      const minC = Math.min(r, g, b);
+
+      brightnessSum += value;
+      brightnessSqSum += value * value;
+      localEdges += Math.abs(value - right) + Math.abs(value - down);
+      saturationSum += maxC - minC;
+      samples += 1;
+    }
+  }
+
+  if (!samples) {
+    return { score: Number.MAX_SAFE_INTEGER, brightness: 110, contrast: 100 };
+  }
+
+  const brightness = brightnessSum / samples;
+  const variance = Math.max(0, brightnessSqSum / samples - brightness * brightness);
+  const contrast = Math.sqrt(variance);
+  const edges = localEdges / samples;
+  const saturation = saturationSum / samples;
+
+  // Чем меньше число, тем спокойнее участок. Контраст и мелкие границы
+  // штрафуются сильнее всего: именно они мешают читать текст.
+  const score = edges * 1.15 + contrast * 0.95 + saturation * 0.12;
+
+  return { score, brightness, contrast };
+}
+
+function findBestTextArea(ctx, canvas) {
+  const candidates = [
+    { name: "top-left",     x: 70,  y: 120, w: 455, h: 505, align: "left" },
+    { name: "top-right",    x: 555, y: 120, w: 455, h: 505, align: "right" },
+    { name: "middle-left",  x: 70,  y: 350, w: 455, h: 520, align: "left" },
+    { name: "middle-right", x: 555, y: 350, w: 455, h: 520, align: "right" },
+    { name: "bottom-left",  x: 70,  y: 690, w: 455, h: 535, align: "left" },
+    { name: "bottom-right", x: 555, y: 690, w: 455, h: 535, align: "right" },
+    { name: "top-center",   x: 170, y: 115, w: 740, h: 500, align: "center" },
+    { name: "bottom-center",x: 170, y: 700, w: 740, h: 525, align: "center" }
+  ];
+
+  let best = null;
+
+  for (const region of candidates) {
+    const analysis = analyzeRegion(
+      getImageDataSafe(ctx, region.x, region.y, region.w, region.h)
+    );
+
+    // Небольшое предпочтение боковым зонам: композиция обычно выглядит
+    // естественнее и меньше перекрывает центральный объект фотографии.
+    const centerPenalty = region.align === "center" ? 5 : 0;
+    const bottomPenalty = region.name.startsWith("bottom") ? 1.5 : 0;
+    const effectiveScore = analysis.score + centerPenalty + bottomPenalty;
+
+    if (!best || effectiveScore < best.effectiveScore) {
+      best = {
+        ...region,
+        ...analysis,
+        effectiveScore
+      };
+    }
+  }
+
+  return best || {
+    name: "bottom-center",
+    x: 170,
+    y: 700,
+    w: 740,
+    h: 525,
+    align: "center",
+    brightness: 100,
+    contrast: 60
+  };
+}
+
+function drawFeatheredTextVeil(ctx, region, useDarkText) {
+  // Это не плашка: только мягкая растушёвка без видимой рамки.
+  const padX = 75;
+  const padY = 65;
+  const x = Math.max(0, region.x - padX);
+  const y = Math.max(0, region.y - padY);
+  const w = Math.min(ctx.canvas.width - x, region.w + padX * 2);
+  const h = Math.min(ctx.canvas.height - y, region.h + padY * 2);
+
+  const gradient = ctx.createRadialGradient(
+    region.x + region.w / 2,
+    region.y + region.h / 2,
+    Math.min(region.w, region.h) * 0.10,
+    region.x + region.w / 2,
+    region.y + region.h / 2,
+    Math.max(region.w, region.h) * 0.72
+  );
+
+  if (useDarkText) {
+    gradient.addColorStop(0, "rgba(255,255,255,0.20)");
+    gradient.addColorStop(0.55, "rgba(255,255,255,0.10)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+  } else {
+    gradient.addColorStop(0, "rgba(0,0,0,0.28)");
+    gradient.addColorStop(0.55, "rgba(0,0,0,0.13)");
+    gradient.addColorStop(1, "rgba(0,0,0,0)");
+  }
+
   ctx.save();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = typography.tagColor;
-  ctx.shadowColor = "rgba(0,0,0,0.18)";
-  ctx.shadowBlur = 10;
-  ctx.font = "700 26px Inter, sans-serif";
-  ctx.fillText(labelMap[greeting.occasion], 540, 86);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(x, y, w, h);
   ctx.restore();
 }
 
-function drawTitleAndBody(ctx, greeting) {
+function fontString(weight, size, family) {
+  return `${weight} ${size}px ${family}`;
+}
+
+function fitWrappedText(ctx, text, maxWidth, maxLines, startSize, minSize, weight, family) {
+  for (let size = startSize; size >= minSize; size -= 2) {
+    ctx.font = fontString(weight, size, family);
+    const lines = wrapText(ctx, text, maxWidth);
+    if (lines.length <= maxLines) {
+      return { size, lines };
+    }
+  }
+
+  ctx.font = fontString(weight, minSize, family);
+  return {
+    size: minSize,
+    lines: wrapText(ctx, text, maxWidth).slice(0, maxLines)
+  };
+}
+
+function occasionAccent(occasion) {
+  return {
+    birthday: "С особым днём",
+    mother: "С любовью",
+    love: "От всего сердца",
+    morning: "Для хорошего дня",
+    night: "С теплом"
+  }[occasion] || "С теплом";
+}
+
+function drawSmartTypography(ctx, greeting, region) {
   const typography = styleTypography[greeting.visualStyle];
-  const leftX = typography.align === "left" ? 120 : 540;
-  const maxTextWidth = typography.align === "left" ? 760 : 800;
+
+  // На очень светлом участке пишем тёмным, на остальных — светлым.
+  // Порог слегка повышен, чтобы светлый текст чаще использовался на фото.
+  const useDarkText = region.brightness >= 185 && region.contrast < 78;
+
+  const titleColor = useDarkText ? typography.darkTitle : typography.lightTitle;
+  const bodyColor = useDarkText ? typography.darkBody : typography.lightBody;
+  const accentColor = useDarkText ? typography.darkAccent : typography.lightAccent;
+
+  drawFeatheredTextVeil(ctx, region, useDarkText);
+
+  const sidePad = region.align === "center" ? 28 : 18;
+  const maxWidth = region.w - sidePad * 2;
+  const x = region.align === "left"
+    ? region.x + sidePad
+    : region.align === "right"
+      ? region.x + region.w - sidePad
+      : region.x + region.w / 2;
+
   ctx.save();
+  ctx.textAlign = region.align;
   ctx.textBaseline = "top";
-  ctx.textAlign = typography.align;
 
-  const titleSize = fitFontSize(ctx, greeting.title, maxTextWidth, greeting.visualStyle === "soft" ? 92 : 82, 50, typography.titleFamily, 700);
-  ctx.font = `700 ${titleSize}px ${typography.titleFamily}`;
-  const titleLines = wrapText(ctx, greeting.title, maxTextWidth).slice(0, 2);
-  let titleY = 800;
-  if (titleLines.length === 2) titleY = 760;
-
-  ctx.fillStyle = typography.titleColor;
-  ctx.shadowColor = "rgba(0,0,0,0.28)";
-  ctx.shadowBlur = 22;
-  ctx.shadowOffsetY = 4;
-  titleLines.forEach((line, index) => ctx.fillText(line, leftX, titleY + index * (titleSize + 6)));
-
-  const bodySize = greeting.visualStyle === "soft" ? 37 : 35;
-  ctx.font = `500 ${bodySize}px ${typography.bodyFamily}`;
-  const bodyLines = wrapText(ctx, greeting.text, maxTextWidth - 30).slice(0, 8);
-  ctx.fillStyle = typography.bodyColor;
-  ctx.shadowColor = "rgba(0,0,0,0.20)";
-  ctx.shadowBlur = 13;
-  ctx.shadowOffsetY = 2;
-  let bodyY = titleY + titleLines.length * (titleSize + 10) + 42;
-  const bodyLineHeight = bodySize * 1.48;
-  bodyLines.forEach((line, index) => ctx.fillText(line, leftX, bodyY + index * bodyLineHeight));
-
-  ctx.font = "600 22px Inter, sans-serif";
-  ctx.fillStyle = typography.tagColor;
-  ctx.shadowBlur = 8;
+  // Маленькая служебная строка.
+  const accentSize = greeting.visualStyle === "modern" ? 19 : 18;
+  ctx.font = fontString(typography.accentWeight, accentSize, typography.accentFamily);
+  ctx.fillStyle = accentColor;
+  ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.18)";
+  ctx.shadowBlur = 7;
   ctx.shadowOffsetY = 1;
-  ctx.fillText("Создано в «Поздравь»", typography.align === "left" ? 120 : 540, 1255);
+  ctx.fillText(occasionAccent(greeting.occasion), x, region.y + 10);
+
+  // Рукописный заголовок — заметно крупнее основного текста.
+  const titleFit = fitWrappedText(
+    ctx,
+    greeting.title,
+    maxWidth,
+    3,
+    greeting.visualStyle === "soft" ? 91 : 86,
+    54,
+    typography.titleWeight,
+    typography.titleFamily
+  );
+
+  const titleLineHeight = titleFit.size * 0.98;
+  let cursorY = region.y + 48;
+
+  ctx.font = fontString(typography.titleWeight, titleFit.size, typography.titleFamily);
+  ctx.fillStyle = titleColor;
+  ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.34)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 3;
+
+  titleFit.lines.forEach((line, index) => {
+    ctx.fillText(line, x, cursorY + index * titleLineHeight);
+  });
+
+  cursorY += titleFit.lines.length * titleLineHeight + 24;
+
+  // Основной текст автоматически уменьшается, если поздравление длинное.
+  const availableBodyHeight = Math.max(150, region.y + region.h - cursorY - 48);
+  let bodySize = greeting.visualStyle === "modern" ? 31 : 34;
+  const minBodySize = greeting.visualStyle === "modern" ? 23 : 25;
+  let bodyLines = [];
+  let bodyLineHeight = 0;
+
+  while (bodySize >= minBodySize) {
+    ctx.font = fontString(typography.bodyWeight, bodySize, typography.bodyFamily);
+    bodyLines = wrapText(ctx, greeting.text, maxWidth);
+    bodyLineHeight = bodySize * (greeting.visualStyle === "modern" ? 1.42 : 1.30);
+
+    if (bodyLines.length * bodyLineHeight <= availableBodyHeight && bodyLines.length <= 8) {
+      break;
+    }
+
+    bodySize -= 2;
+  }
+
+  bodyLines = bodyLines.slice(0, 8);
+  ctx.font = fontString(typography.bodyWeight, bodySize, typography.bodyFamily);
+  ctx.fillStyle = bodyColor;
+  ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.27)";
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 2;
+
+  bodyLines.forEach((line, index) => {
+    ctx.fillText(line, x, cursorY + index * bodyLineHeight);
+  });
+
+  // Миниатюрная подпись внизу выбранной зоны.
+  const brandY = Math.min(region.y + region.h - 24, 1285);
+  ctx.font = fontString(600, 17, 'Inter, sans-serif');
+  ctx.fillStyle = accentColor;
+  ctx.shadowBlur = 5;
+  ctx.fillText("Поздравь", x, brandY);
+
   ctx.restore();
 }
 
@@ -377,13 +604,24 @@ function loadImage(src) {
 }
 
 async function renderVariant(canvas, imageSource, greeting) {
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
   const img = await loadImage(imageSource);
+
+  // Ждём web-шрифты, чтобы Canvas не успел отрисовать системный fallback.
+  if (document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch (error) {
+      console.warn("Шрифты ещё загружаются:", error);
+    }
+  }
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawImageCover(ctx, canvas, img);
-  drawOverlay(ctx, canvas, greeting.visualStyle);
-  drawTagLine(ctx, greeting, styleTypography[greeting.visualStyle]);
-  drawTitleAndBody(ctx, greeting);
+
+  // Анализ выполняется по чистой фотографии, до любых затемнений и текста.
+  const bestRegion = findBestTextArea(ctx, canvas);
+  drawSmartTypography(ctx, greeting, bestRegion);
 }
 
 function cardFileName(greeting, idx) {
