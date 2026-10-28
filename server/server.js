@@ -273,6 +273,24 @@ function getManifestEntries(manifest, occasion, visualStyle) {
   return [];
 }
 
+function getReadyManifestEntries(manifest, occasion, visualStyle) {
+  const readyRoot = manifest?.ready;
+  const exact = readyRoot?.[occasion]?.[visualStyle];
+  if (Array.isArray(exact) && exact.length) return exact;
+
+  const occasionBlock = readyRoot?.[occasion];
+  if (occasionBlock && typeof occasionBlock === "object") {
+    const combined = Object.values(occasionBlock)
+      .filter(Array.isArray)
+      .flat();
+    if (combined.length) return combined;
+  }
+
+  const fallback = readyRoot?.default;
+  if (Array.isArray(fallback) && fallback.length) return fallback;
+  return [];
+}
+
 function resolvePhotoUrl(entry, manifestUrl, allowedOrigin) {
   const raw = typeof entry === "string" ? entry : entry?.url || entry?.file;
 
@@ -350,6 +368,34 @@ async function getCloudPhotoVariants({ occasion, visualStyle, variantCount }) {
   return images;
 }
 
+async function getReadyCardVariantsFromCloud({ occasion, visualStyle, variantCount }) {
+  const loaded = await loadPhotoManifest();
+  const entries = getReadyManifestEntries(loaded.manifest, occasion, visualStyle);
+
+  if (entries.length < variantCount) {
+    throw new Error(`В базе готовых открыток недостаточно файлов для ${occasion}/${visualStyle}. Нужно минимум ${variantCount}.`);
+  }
+
+  const candidates = shuffle(entries);
+  const images = [];
+  for (const entry of candidates) {
+    if (images.length >= variantCount) break;
+    try {
+      const url = resolvePhotoUrl(entry, loaded.manifestUrl, loaded.origin);
+      const imageData = await downloadCloudPhoto(url);
+      images.push({ imageData });
+    } catch (error) {
+      console.warn("Пропускаем готовую открытку из облачной базы:", error.message);
+    }
+  }
+
+  if (images.length < variantCount) {
+    throw new Error("Не удалось загрузить достаточно готовых открыток из облачной базы.");
+  }
+
+  return images;
+}
+
 function findImageToken(uploadInfo, uploadResult) {
   if (typeof uploadResult?.token === "string") return uploadResult.token;
   const photos = uploadResult?.photos;
@@ -422,9 +468,10 @@ app.get("/health", (req, res) => {
   res.json({
     ok: true,
     service: "pozdrav-max-api",
-    version: "4.8-title-wrap",
+    version: "4.9-fonts-ready-cards",
     imageModel: "aliceai-image-art-3.0",
     cloudPhotoLibraryConfigured: Boolean(PHOTO_LIBRARY_MANIFEST_URL),
+    readyCardLibrarySupported: true,
     multiVariant: true
   });
 });
@@ -447,6 +494,27 @@ app.post("/api/photo-variants", async (req, res) => {
     });
 
     res.json({ ok: true, provider: "timeweb-s3", images });
+  } catch (error) {
+    console.error(error);
+    const message = error instanceof Error ? error.message : "Внутренняя ошибка сервера.";
+    const authError = /initData|подпись|auth_date|устарели|пользовател/i.test(message);
+    res.status(authError ? 401 : 500).json({ error: message });
+  }
+});
+
+app.post("/api/ready-card-variants", async (req, res) => {
+  try {
+    const { initData, occasion = "birthday", visualStyle = "premium", variantCount = 3 } = req.body || {};
+    const auth = validateOrUseBrowserMode(initData);
+    const count = Math.min(3, Math.max(2, Number(variantCount || 3)));
+    const rateKey = `ready-cards:${auth.userId}`;
+
+    if (!rateAllowed(rateKey, 30, 10 * 60 * 1000)) {
+      return res.status(429).json({ error: "Слишком много запросов к базе готовых открыток. Попробуйте через несколько минут." });
+    }
+
+    const images = await getReadyCardVariantsFromCloud({ occasion, visualStyle, variantCount: count });
+    res.json({ ok: true, provider: "timeweb-s3-ready", images });
   } catch (error) {
     console.error(error);
     const message = error instanceof Error ? error.message : "Внутренняя ошибка сервера.";
