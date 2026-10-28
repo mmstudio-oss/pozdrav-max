@@ -382,14 +382,14 @@ function analyzeRegion(imageData) {
 
 function findBestTextArea(ctx, canvas) {
   const candidates = [
-    { name: "top-left",     x: 70,  y: 120, w: 455, h: 505, align: "left" },
-    { name: "top-right",    x: 555, y: 120, w: 455, h: 505, align: "right" },
-    { name: "middle-left",  x: 70,  y: 350, w: 455, h: 520, align: "left" },
-    { name: "middle-right", x: 555, y: 350, w: 455, h: 520, align: "right" },
-    { name: "bottom-left",  x: 70,  y: 690, w: 455, h: 535, align: "left" },
-    { name: "bottom-right", x: 555, y: 690, w: 455, h: 535, align: "right" },
-    { name: "top-center",   x: 170, y: 115, w: 740, h: 500, align: "center" },
-    { name: "bottom-center",x: 170, y: 700, w: 740, h: 525, align: "center" }
+    { name: "top-left",     x: 55,  y: 90,  w: 520, h: 585, align: "left" },
+    { name: "top-right",    x: 505, y: 90,  w: 520, h: 585, align: "right" },
+    { name: "middle-left",  x: 55,  y: 300, w: 520, h: 620, align: "left" },
+    { name: "middle-right", x: 505, y: 300, w: 520, h: 620, align: "right" },
+    { name: "bottom-left",  x: 55,  y: 650, w: 520, h: 610, align: "left" },
+    { name: "bottom-right", x: 505, y: 650, w: 520, h: 610, align: "right" },
+    { name: "top-center",   x: 110, y: 90,  w: 860, h: 600, align: "center" },
+    { name: "bottom-center",x: 110, y: 645, w: 860, h: 615, align: "center" }
   ];
 
   let best = null;
@@ -416,10 +416,10 @@ function findBestTextArea(ctx, canvas) {
 
   return best || {
     name: "bottom-center",
-    x: 170,
-    y: 700,
-    w: 740,
-    h: 525,
+    x: 110,
+    y: 645,
+    w: 860,
+    h: 615,
     align: "center",
     brightness: 100,
     contrast: 60
@@ -428,8 +428,8 @@ function findBestTextArea(ctx, canvas) {
 
 function drawFeatheredTextVeil(ctx, region, useDarkText) {
   // Это не плашка: только мягкая растушёвка без видимой рамки.
-  const padX = 75;
-  const padY = 65;
+  const padX = 90;
+  const padY = 78;
   const x = Math.max(0, region.x - padX);
   const y = Math.max(0, region.y - padY);
   const w = Math.min(ctx.canvas.width - x, region.w + padX * 2);
@@ -503,7 +503,7 @@ function drawSmartTypography(ctx, greeting, region) {
 
   drawFeatheredTextVeil(ctx, region, useDarkText);
 
-  const sidePad = region.align === "center" ? 28 : 18;
+  const sidePad = region.align === "center" ? 38 : 28;
   const maxWidth = region.w - sidePad * 2;
   const x = region.align === "left"
     ? region.x + sidePad
@@ -516,13 +516,13 @@ function drawSmartTypography(ctx, greeting, region) {
   ctx.textBaseline = "top";
 
   // Маленькая служебная строка.
-  const accentSize = greeting.visualStyle === "modern" ? 19 : 18;
+  const accentSize = greeting.visualStyle === "modern" ? 27 : 26;
   ctx.font = fontString(typography.accentWeight, accentSize, typography.accentFamily);
   ctx.fillStyle = accentColor;
   ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.18)";
   ctx.shadowBlur = 7;
   ctx.shadowOffsetY = 1;
-  ctx.fillText(occasionAccent(greeting.occasion), x, region.y + 10);
+  ctx.fillText(occasionAccent(greeting.occasion), x, region.y + 12);
 
   // Рукописный заголовок — заметно крупнее основного текста.
   const titleFit = fitWrappedText(
@@ -530,14 +530,14 @@ function drawSmartTypography(ctx, greeting, region) {
     greeting.title,
     maxWidth,
     3,
-    greeting.visualStyle === "soft" ? 91 : 86,
-    54,
+    greeting.visualStyle === "soft" ? 126 : 116,
+    72,
     typography.titleWeight,
     typography.titleFamily
   );
 
   const titleLineHeight = titleFit.size * 0.98;
-  let cursorY = region.y + 48;
+  let cursorY = region.y + 58;
 
   ctx.font = fontString(typography.titleWeight, titleFit.size, typography.titleFamily);
   ctx.fillStyle = titleColor;
@@ -549,28 +549,28 @@ function drawSmartTypography(ctx, greeting, region) {
     ctx.fillText(line, x, cursorY + index * titleLineHeight);
   });
 
-  cursorY += titleFit.lines.length * titleLineHeight + 24;
+  cursorY += titleFit.lines.length * titleLineHeight + 30;
 
   // Основной текст автоматически уменьшается, если поздравление длинное.
-  const availableBodyHeight = Math.max(150, region.y + region.h - cursorY - 48);
-  let bodySize = greeting.visualStyle === "modern" ? 31 : 34;
-  const minBodySize = greeting.visualStyle === "modern" ? 23 : 25;
+  const availableBodyHeight = Math.max(190, region.y + region.h - cursorY - 56);
+  let bodySize = greeting.visualStyle === "modern" ? 42 : 46;
+  const minBodySize = greeting.visualStyle === "modern" ? 30 : 32;
   let bodyLines = [];
   let bodyLineHeight = 0;
 
   while (bodySize >= minBodySize) {
     ctx.font = fontString(typography.bodyWeight, bodySize, typography.bodyFamily);
     bodyLines = wrapText(ctx, greeting.text, maxWidth);
-    bodyLineHeight = bodySize * (greeting.visualStyle === "modern" ? 1.42 : 1.30);
+    bodyLineHeight = bodySize * (greeting.visualStyle === "modern" ? 1.34 : 1.24);
 
-    if (bodyLines.length * bodyLineHeight <= availableBodyHeight && bodyLines.length <= 8) {
+    if (bodyLines.length * bodyLineHeight <= availableBodyHeight && bodyLines.length <= 7) {
       break;
     }
 
     bodySize -= 2;
   }
 
-  bodyLines = bodyLines.slice(0, 8);
+  bodyLines = bodyLines.slice(0, 7);
   ctx.font = fontString(typography.bodyWeight, bodySize, typography.bodyFamily);
   ctx.fillStyle = bodyColor;
   ctx.shadowColor = useDarkText ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.27)";
@@ -582,8 +582,8 @@ function drawSmartTypography(ctx, greeting, region) {
   });
 
   // Миниатюрная подпись внизу выбранной зоны.
-  const brandY = Math.min(region.y + region.h - 24, 1285);
-  ctx.font = fontString(600, 17, 'Inter, sans-serif');
+  const brandY = Math.min(region.y + region.h - 32, 1282);
+  ctx.font = fontString(600, 23, 'Inter, sans-serif');
   ctx.fillStyle = accentColor;
   ctx.shadowBlur = 5;
   ctx.fillText("Поздравь", x, brandY);
