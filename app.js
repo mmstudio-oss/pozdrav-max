@@ -494,7 +494,7 @@ function fitWrappedText(ctx, text, maxWidth, maxLines, startSize, minSize, weigh
 
 function measureComposition(ctx, greeting, typography, composition, region, sizes) {
   const effectiveAlign = composition.alignOverride || region.align;
-  const sidePad = effectiveAlign === "center" ? 26 : 20;
+  const sidePad = effectiveAlign === "center" ? 38 : 30;
   const maxWidth = region.w - sidePad * 2;
 
   const titleFit = fitWrappedText(
@@ -525,9 +525,9 @@ function measureComposition(ctx, greeting, typography, composition, region, size
   }
 
   const bodyHeight = bodyLines.length * bodyLineHeight;
-  const topPad = 16 + composition.yOffset;
-  const bottomPad = 26;
-  const brandReserve = 46;
+  const topPad = 18 + composition.yOffset;
+  const bottomPad = 34;
+  const brandReserve = 58;
   const totalHeight = topPad + titleHeight + titleGap + bodyHeight + brandReserve + bottomPad;
 
   return {
@@ -549,20 +549,20 @@ function measureComposition(ctx, greeting, typography, composition, region, size
 
 function fitCardComposition(ctx, greeting, typography, composition, region) {
   const sizes = {
-    title: Math.round((greeting.visualStyle === "soft" ? 154 : greeting.visualStyle === "premium" ? 148 : 142) * composition.titleScale),
-    body: Math.round((greeting.visualStyle === "modern" ? 44 : 50) * composition.bodyScale),
+    title: Math.round((greeting.visualStyle === "soft" ? 146 : greeting.visualStyle === "premium" ? 140 : 136) * composition.titleScale),
+    body: Math.round((greeting.visualStyle === "modern" ? 40 : 46) * composition.bodyScale),
     minTitle: greeting.visualStyle === "modern" ? 74 : 78,
     minBody: greeting.visualStyle === "modern" ? 28 : 30,
     maxBodyLines: 6
   };
 
-  const maxAvailableHeight = region.h - 10;
+  const maxAvailableHeight = region.h - 22;
   let metrics = measureComposition(ctx, greeting, typography, composition, region, sizes);
   let guard = 0;
 
   while (guard < 80) {
-    const bodyTooTall = metrics.bodyLines.length > sizes.maxBodyLines || metrics.bodyHeight > maxAvailableHeight * 0.54;
-    const titleTooTall = metrics.titleHeight > maxAvailableHeight * 0.52;
+    const bodyTooTall = metrics.bodyLines.length > sizes.maxBodyLines || metrics.bodyHeight > maxAvailableHeight * 0.50;
+    const titleTooTall = metrics.titleHeight > maxAvailableHeight * 0.48;
     const overflow = metrics.totalHeight - maxAvailableHeight;
 
     if (overflow <= 0 && !bodyTooTall && !titleTooTall) break;
@@ -675,8 +675,8 @@ function drawSmartTypography(ctx, greeting, region, variantIndex = 0) {
   });
 
   const brandText = 'Создано в «Поздравь»';
-  const brandY = Math.min(region.y + region.h - 26, ctx.canvas.height - 38);
-  const brandSize = 18;
+  const brandY = ctx.canvas.height - 34;
+  const brandSize = 17;
   ctx.font = fontString(600, brandSize, 'Inter, sans-serif');
   ctx.fillStyle = accentColor;
   ctx.shadowBlur = 4;
@@ -685,10 +685,10 @@ function drawSmartTypography(ctx, greeting, region, variantIndex = 0) {
   let brandAlign = metrics.effectiveAlign;
   if (metrics.effectiveAlign === 'left') {
     brandAlign = 'left';
-    brandX = region.x + 8;
+    brandX = 26;
   } else if (metrics.effectiveAlign === 'right') {
     brandAlign = 'right';
-    brandX = region.x + region.w - 8;
+    brandX = ctx.canvas.width - 26;
   } else {
     brandAlign = 'center';
     brandX = region.x + region.w / 2;
