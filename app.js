@@ -279,19 +279,47 @@ async function getAIVariants(greeting, count) {
   return result.images.map((item) => ({ imageData: item.imageData, sourceLabel: "AI" }));
 }
 
+function textVisualWidth(context, text) {
+  const metrics = context.measureText(text);
+  const left = Math.abs(metrics.actualBoundingBoxLeft || 0);
+  const right = Math.abs(metrics.actualBoundingBoxRight || 0);
+  return Math.max(metrics.width || 0, left + right);
+}
+
+function splitOversizedWord(context, word, maxWidth) {
+  if (textVisualWidth(context, word) <= maxWidth) return [word];
+
+  const chunks = [];
+  let current = "";
+  for (const char of word) {
+    const candidate = current + char;
+    if (current && textVisualWidth(context, candidate) > maxWidth) {
+      chunks.push(current);
+      current = char;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
 function wrapText(context, text, maxWidth) {
-  const words = text.split(/\s+/);
+  const rawWords = String(text || "").split(/\s+/).filter(Boolean);
+  const words = rawWords.flatMap((word) => splitOversizedWord(context, word, maxWidth));
   const lines = [];
   let current = "";
-  words.forEach((word) => {
+
+  for (const word of words) {
     const candidate = current ? `${current} ${word}` : word;
-    if (context.measureText(candidate).width > maxWidth && current) {
+    if (current && textVisualWidth(context, candidate) > maxWidth) {
       lines.push(current);
       current = word;
     } else {
       current = candidate;
     }
-  });
+  }
+
   if (current) lines.push(current);
   return lines;
 }
@@ -477,25 +505,46 @@ function fontString(weight, size, family) {
 }
 
 function fitWrappedText(ctx, text, maxWidth, maxLines, startSize, minSize, weight, family) {
-  for (let size = startSize; size >= minSize; size -= 2) {
+  const absoluteMin = Math.min(minSize, 54);
+
+  for (let size = startSize; size >= absoluteMin; size -= 2) {
     ctx.font = fontString(weight, size, family);
     const lines = wrapText(ctx, text, maxWidth);
-    if (lines.length <= maxLines) {
-      return { size, lines };
+    const widest = lines.reduce((acc, line) => Math.max(acc, textVisualWidth(ctx, line)), 0);
+
+    if (lines.length <= maxLines && widest <= maxWidth) {
+      return { size, lines, widest };
     }
   }
 
-  ctx.font = fontString(weight, minSize, family);
+  ctx.font = fontString(weight, absoluteMin, family);
+  const fallbackLines = wrapText(ctx, text, maxWidth).slice(0, maxLines);
   return {
-    size: minSize,
-    lines: wrapText(ctx, text, maxWidth).slice(0, maxLines)
+    size: absoluteMin,
+    lines: fallbackLines,
+    widest: fallbackLines.reduce((acc, line) => Math.max(acc, textVisualWidth(ctx, line)), 0)
   };
+}
+
+function safeWidthForAlignment(ctx, x, align, preferredWidth, safeMargin = 58) {
+  const leftRoom = Math.max(0, x - safeMargin);
+  const rightRoom = Math.max(0, ctx.canvas.width - safeMargin - x);
+
+  if (align === "left") return Math.max(120, Math.min(preferredWidth, rightRoom));
+  if (align === "right") return Math.max(120, Math.min(preferredWidth, leftRoom));
+  return Math.max(120, Math.min(preferredWidth, 2 * Math.min(leftRoom, rightRoom)));
 }
 
 function measureComposition(ctx, greeting, typography, composition, region, sizes) {
   const effectiveAlign = composition.alignOverride || region.align;
-  const sidePad = effectiveAlign === "center" ? 38 : 30;
-  const maxWidth = region.w - sidePad * 2;
+  const sidePad = effectiveAlign === "center" ? 44 : 36;
+  const preferredWidth = region.w - sidePad * 2;
+  const x = effectiveAlign === "left"
+    ? region.x + sidePad
+    : effectiveAlign === "right"
+      ? region.x + region.w - sidePad
+      : region.x + region.w / 2;
+  const maxWidth = safeWidthForAlignment(ctx, x, effectiveAlign, preferredWidth, 58);
 
   const titleFit = fitWrappedText(
     ctx,
@@ -533,6 +582,7 @@ function measureComposition(ctx, greeting, typography, composition, region, size
   return {
     effectiveAlign,
     sidePad,
+    x,
     maxWidth,
     titleFit,
     titleLineHeight,
@@ -549,10 +599,10 @@ function measureComposition(ctx, greeting, typography, composition, region, size
 
 function fitCardComposition(ctx, greeting, typography, composition, region) {
   const sizes = {
-    title: Math.round((greeting.visualStyle === "soft" ? 146 : greeting.visualStyle === "premium" ? 140 : 136) * composition.titleScale),
-    body: Math.round((greeting.visualStyle === "modern" ? 40 : 46) * composition.bodyScale),
-    minTitle: greeting.visualStyle === "modern" ? 74 : 78,
-    minBody: greeting.visualStyle === "modern" ? 28 : 30,
+    title: Math.round((greeting.visualStyle === "soft" ? 136 : greeting.visualStyle === "premium" ? 132 : 128) * composition.titleScale),
+    body: Math.round((greeting.visualStyle === "modern" ? 38 : 43) * composition.bodyScale),
+    minTitle: greeting.visualStyle === "modern" ? 60 : 64,
+    minBody: greeting.visualStyle === "modern" ? 27 : 29,
     maxBodyLines: 6
   };
 
@@ -640,11 +690,7 @@ function drawSmartTypography(ctx, greeting, region, variantIndex = 0) {
   const composition = compositionForVariant(variantIndex);
   const metrics = fitCardComposition(ctx, greeting, typography, composition, region);
 
-  const x = metrics.effectiveAlign === "left"
-    ? region.x + metrics.sidePad
-    : metrics.effectiveAlign === "right"
-      ? region.x + region.w - metrics.sidePad
-      : region.x + region.w / 2;
+  const x = metrics.x;
 
   ctx.save();
   ctx.textAlign = metrics.effectiveAlign;
@@ -681,20 +727,8 @@ function drawSmartTypography(ctx, greeting, region, variantIndex = 0) {
   ctx.fillStyle = accentColor;
   ctx.shadowBlur = 4;
 
-  let brandX = x;
-  let brandAlign = metrics.effectiveAlign;
-  if (metrics.effectiveAlign === 'left') {
-    brandAlign = 'left';
-    brandX = 26;
-  } else if (metrics.effectiveAlign === 'right') {
-    brandAlign = 'right';
-    brandX = ctx.canvas.width - 26;
-  } else {
-    brandAlign = 'center';
-    brandX = region.x + region.w / 2;
-  }
-
-  ctx.textAlign = brandAlign;
+  const brandX = ctx.canvas.width / 2;
+  ctx.textAlign = "center";
   ctx.fillText(brandText, brandX, brandY);
   ctx.restore();
 }
