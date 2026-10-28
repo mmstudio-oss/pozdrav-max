@@ -8,7 +8,7 @@
   <script src="https://st.max.ru/js/max-web-app.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bad+Script&family=Caveat:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Lobster&family=Marck+Script&display=swap&subset=cyrillic" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bad+Script&family=Caveat:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=Lobster&family=Marck+Script&family=Neucha&family=Pacifico&family=Pangolin&family=Prata&family=PT+Serif:wght@400;700&display=swap&subset=cyrillic" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -52,6 +52,7 @@
           <select id="sourceMode">
             <option value="cloud">☁️ Фото из облачной базы</option>
             <option value="ai">✨ Yandex AI</option>
+            <option value="ready">🖼️ Готовая открытка с текстом</option>
           </select>
         </div>
         <div>
@@ -63,11 +64,13 @@
         </div>
       </div>
 
-      <label for="name">Имя <span class="optional">(необязательно)</span></label>
-      <input id="name" type="text" maxlength="30" placeholder="Например: Александр" autocomplete="off" />
+      <div id="personalFields">
+        <label for="name">Имя <span class="optional">(необязательно)</span></label>
+        <input id="name" type="text" maxlength="30" placeholder="Например: Александр" autocomplete="off" />
 
-      <label for="details">Пара слов о человеке <span class="optional">(необязательно)</span></label>
-      <textarea id="details" maxlength="140" placeholder="Например: любит море, путешествия и кофе"></textarea>
+        <label for="details">Пара слов о человеке <span class="optional">(необязательно)</span></label>
+        <textarea id="details" maxlength="140" placeholder="Например: любит море, путешествия и кофе"></textarea>
+      </div>
 
       <button id="generateButton" class="button button-primary">СОЗДАТЬ</button>
       <p id="statusMessage" class="status" aria-live="polite"></p>
@@ -101,7 +104,7 @@
     </template>
 
     <footer>
-      Поздравь · v4.8
+      Поздравь · v4.9
     </footer>
   </main>
   <script src="app.js"></script>
