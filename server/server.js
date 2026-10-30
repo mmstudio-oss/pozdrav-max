@@ -157,33 +157,62 @@ async function maxFetch(url, options = {}) {
 
 async function generateOneImageWithYandex({ occasion, visualStyle, recipientName, details, variantIndex }) {
   const prompt = buildPrompt({ occasion, visualStyle, recipientName, details, variantIndex });
-  const response = await fetch("https://ai.api.cloud.yandex.net/v1/images/generations", {
-    method: "POST",
-    headers: {
-      Authorization: `Api-Key ${YANDEX_API_KEY}`,
-      "Content-Type": "application/json",
-      "x-folder-id": YANDEX_FOLDER_ID
-    },
-    body: JSON.stringify({
-      model: `art://${YANDEX_FOLDER_ID}/aliceai-image-art-3.0`,
-      prompt,
-      size: "1024x1536"
-    })
-  });
-  const raw = await response.text();
-  let data = {};
-  if (raw) {
-    try { data = JSON.parse(raw); }
-    catch { data = { raw }; }
-  }
-  if (!response.ok) {
-    throw new Error(`Yandex AI Studio: ${data?.message || data?.error || response.status}`);
-  }
-  const b64 = data?.data?.[0]?.b64_json || data?.result?.image || data?.image;
-  if (!b64 || typeof b64 !== "string") throw new Error("Yandex не вернул изображение.");
-  return { imageData: `data:image/png;base64,${b64}`, promptPreview: prompt };
-}
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 90000);
 
+  try {
+    const response = await fetch("https://ai.api.cloud.yandex.net/v1/images/generations", {
+      method: "POST",
+      headers: {
+        Authorization: `Api-Key ${YANDEX_API_KEY}`,
+        "Content-Type": "application/json",
+        "OpenAI-Project": YANDEX_FOLDER_ID
+      },
+      body: JSON.stringify({
+        model: `art://${YANDEX_FOLDER_ID}/aliceai-image-art-3.0`,
+        prompt,
+        size: "1024x1536",
+        response_format: "b64_json",
+        output_format: "png"
+      }),
+      signal: controller.signal
+    });
+
+    const raw = await response.text();
+    let data = {};
+    if (raw) {
+      try { data = JSON.parse(raw); }
+      catch { data = { raw }; }
+    }
+
+    if (!response.ok) {
+      const message =
+        data?.error?.message ||
+        data?.message ||
+        data?.error ||
+        data?.raw ||
+        response.status;
+      throw new Error(`Yandex AI Studio: ${message}`);
+    }
+
+    const b64 = data?.data?.[0]?.b64_json;
+    if (!b64 || typeof b64 !== "string") {
+      throw new Error("Yandex AI Studio не вернул изображение в формате b64_json.");
+    }
+
+    return {
+      imageData: `data:image/png;base64,${b64}`,
+      promptPreview: prompt
+    };
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("Yandex AI не ответил за 90 секунд. Попробуйте ещё раз.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function shuffle(items) {
   const copy = [...items];
@@ -468,7 +497,7 @@ app.get("/health", (req, res) => {
   res.json({
     ok: true,
     service: "pozdrav-max-api",
-    version: "4.9-fonts-ready-cards",
+    version: "4.9.1-ai-fix",
     imageModel: "aliceai-image-art-3.0",
     cloudPhotoLibraryConfigured: Boolean(PHOTO_LIBRARY_MANIFEST_URL),
     readyCardLibrarySupported: true,
@@ -532,17 +561,17 @@ app.post("/api/generate-ai-cards", async (req, res) => {
     if (!rateAllowed(rateKey, 3, 10 * 60 * 1000)) {
       return res.status(429).json({ error: "Слишком много AI-генераций. Попробуйте через несколько минут." });
     }
-    const images = [];
-    for (let i = 0; i < count; i += 1) {
-      const generated = await generateOneImageWithYandex({
-        occasion,
-        visualStyle,
-        recipientName: String(recipientName || "").slice(0, 40),
-        details: String(details || "").slice(0, 180),
-        variantIndex: i
-      });
-      images.push(generated);
-    }
+    const images = await Promise.all(
+      Array.from({ length: count }, (_, i) =>
+        generateOneImageWithYandex({
+          occasion,
+          visualStyle,
+          recipientName: String(recipientName || "").slice(0, 40),
+          details: String(details || "").slice(0, 180),
+          variantIndex: i
+        })
+      )
+    );
     res.json({ ok: true, images });
   } catch (error) {
     console.error(error);
