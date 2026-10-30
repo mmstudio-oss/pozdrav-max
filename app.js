@@ -392,7 +392,9 @@ async function getAIVariants(greeting, count) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 100000);
+  const quality = aiQualityInput?.value || "low";
+  const frontendTimeoutMs = quality === "high" ? 145000 : quality === "medium" ? 120000 : 95000;
+  const timeout = setTimeout(() => controller.abort(), frontendTimeoutMs);
 
   try {
     const response = await fetch(`${API_BASE_URL}/api/generate-ai-cards`, {
@@ -405,7 +407,7 @@ async function getAIVariants(greeting, count) {
         recipientName: greeting.name,
         details: greeting.details,
         variantCount: count,
-        quality: aiQualityInput?.value || "low"
+        quality
       }),
       signal: controller.signal
     });
