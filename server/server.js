@@ -116,31 +116,46 @@ function getStyleMeta(visualStyle) {
   return map[visualStyle] || map.premium;
 }
 
-const promptVariations = [
-  "Variation: more airy composition with visible negative space.",
-  "Variation: slightly more floral decorative accents and soft bokeh.",
-  "Variation: cleaner minimal composition with elegant focal depth."
+const variantConcepts = [
+  {
+    artDirection: "airy botanical fine-art photography, delicate flowers framing one side, luminous natural daylight, creamy pastel atmosphere, graceful depth of field",
+    composition: "asymmetric composition with decorative elements mostly around the edges and a generous calm open area for typography",
+    mood: "gentle, emotional, elegant, light, refined"
+  },
+  {
+    artDirection: "luxury editorial still life, sophisticated premium materials, subtle ribbons or glass or elegant decorative objects, cinematic side lighting, polished magazine aesthetic",
+    composition: "strong clean geometry and an intentionally different focal point from the floral variant, with broad uncluttered negative space",
+    mood: "expensive, restrained, stylish, modern, dramatic"
+  },
+  {
+    artDirection: "joyful contemporary celebration, vivid but tasteful colors, glowing bokeh, festive particles or abstract light, dynamic visual rhythm, fresh modern photography",
+    composition: "energetic diagonal or layered composition with a clearly different camera angle and a large readable calm zone",
+    mood: "bright, optimistic, lively, celebratory, expressive"
+  }
 ];
 
 function buildPrompt({ occasion, visualStyle, recipientName, details, variantIndex }) {
   const occasionMeta = getOccasionMeta(occasion);
   const styleMeta = getStyleMeta(visualStyle);
-  const personHint = details ? `Inspiration from the recipient: ${details}.` : "";
-  const nameHint = recipientName ? `The card is intended for a person named ${recipientName}, but do not render any text or letters.` : "";
-  const variation = promptVariations[variantIndex % promptVariations.length] || "";
+  const concept = variantConcepts[variantIndex % variantConcepts.length];
+  const personHint = details ? `Subtle inspiration from the recipient: ${details}.` : "";
+  const nameHint = recipientName ? `The card is intended for a person named ${recipientName}, but never render the name or any text.` : "";
+
   return [
-    "Premium vertical greeting card background.",
+    "Create a premium vertical greeting card background, portrait orientation.",
     `Occasion: ${occasionMeta.ru}.`,
-    styleMeta.style + ".",
-    styleMeta.palette + ".",
-    occasionMeta.theme + ".",
+    `ART DIRECTION FOR THIS VARIANT: ${concept.artDirection}.`,
+    `COMPOSITION: ${concept.composition}.`,
+    `MOOD: ${concept.mood}.`,
+    `Overall visual style: ${styleMeta.style}.`,
+    `Palette guidance: ${styleMeta.palette}.`,
+    `Occasion details: ${occasionMeta.theme}.`,
     personHint,
     nameHint,
-    variation,
-    "Beautiful elegant composition with a clear focal atmosphere.",
-    "Leave clean negative space for typography in the lower third of the image.",
-    "No text, no letters, no words, no caption, no logo, no watermark.",
-    "High detail, tasteful, expensive, aesthetically pleasing, visually balanced."
+    "This result must look substantially different from other variants: use a different focal object, lighting setup, composition, and visual rhythm.",
+    "Reserve a large calm area with low visual detail for later typography, but do not add any text yourself.",
+    "No letters, no words, no captions, no logos, no watermarks, no fake typography.",
+    "High aesthetic quality, balanced composition, realistic professional photography or premium editorial illustration depending on the art direction."
   ].filter(Boolean).join(" ");
 }
 
@@ -155,10 +170,21 @@ async function maxFetch(url, options = {}) {
   return { response, data };
 }
 
-async function generateOneImageWithYandex({ occasion, visualStyle, recipientName, details, variantIndex }) {
+function normalizeImageQuality(value) {
+  return ["low", "medium", "high"].includes(value) ? value : "low";
+}
+
+function qualityTimeoutMs(quality) {
+  if (quality === "high") return 130000;
+  if (quality === "medium") return 105000;
+  return 80000;
+}
+
+async function generateOneImageWithYandex({ occasion, visualStyle, recipientName, details, variantIndex, quality = "low" }) {
   const prompt = buildPrompt({ occasion, visualStyle, recipientName, details, variantIndex });
+  const safeQuality = normalizeImageQuality(quality);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90000);
+  const timeout = setTimeout(() => controller.abort(), qualityTimeoutMs(safeQuality));
 
   try {
     const response = await fetch("https://ai.api.cloud.yandex.net/v1/images/generations", {
@@ -172,6 +198,8 @@ async function generateOneImageWithYandex({ occasion, visualStyle, recipientName
         model: `art://${YANDEX_FOLDER_ID}/aliceai-image-art-3.0`,
         prompt,
         size: "1024x1536",
+        quality: safeQuality,
+        n: 1,
         response_format: "b64_json",
         output_format: "png"
       }),
@@ -206,7 +234,7 @@ async function generateOneImageWithYandex({ occasion, visualStyle, recipientName
     };
   } catch (error) {
     if (error?.name === "AbortError") {
-      throw new Error("Yandex AI не ответил за 90 секунд. Попробуйте ещё раз.");
+      throw new Error(`Yandex AI не ответил вовремя (${safeQuality}). Попробуйте режим «Быстро» или повторите запрос.`);
     }
     throw error;
   } finally {
@@ -497,7 +525,7 @@ app.get("/health", (req, res) => {
   res.json({
     ok: true,
     service: "pozdrav-max-api",
-    version: "4.9.1-ai-fix",
+    version: "4.10-diverse-ai",
     imageModel: "aliceai-image-art-3.0",
     cloudPhotoLibraryConfigured: Boolean(PHOTO_LIBRARY_MANIFEST_URL),
     readyCardLibrarySupported: true,
@@ -554,7 +582,7 @@ app.post("/api/ready-card-variants", async (req, res) => {
 
 app.post("/api/generate-ai-cards", async (req, res) => {
   try {
-    const { initData, occasion = "birthday", visualStyle = "premium", recipientName = "", details = "", variantCount = 2 } = req.body || {};
+    const { initData, occasion = "birthday", visualStyle = "premium", recipientName = "", details = "", variantCount = 2, quality = "low" } = req.body || {};
     const auth = validateOrUseBrowserMode(initData);
     const count = Math.min(3, Math.max(2, Number(variantCount || 2)));
     const rateKey = `gen:${auth.userId}`;
@@ -568,7 +596,8 @@ app.post("/api/generate-ai-cards", async (req, res) => {
           visualStyle,
           recipientName: String(recipientName || "").slice(0, 40),
           details: String(details || "").slice(0, 180),
-          variantIndex: i
+          variantIndex: i,
+          quality: normalizeImageQuality(quality)
         })
       )
     );
