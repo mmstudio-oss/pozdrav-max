@@ -640,5 +640,5 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Pozdrav MAX API v4.1 Smart Text запущен на порту ${PORT}`);
+  console.log(`Pozdrav MAX API v4.10 Diverse AI запущен на порту ${PORT}`);
 });
