@@ -64,6 +64,15 @@
         </div>
       </div>
 
+      <div id="aiQualityField" class="hidden">
+        <label for="aiQuality">Скорость AI</label>
+        <select id="aiQuality">
+          <option value="low" selected>⚡ Быстро</option>
+          <option value="medium">✨ Стандарт</option>
+          <option value="high">💎 Высокое качество</option>
+        </select>
+      </div>
+
       <div id="personalFields">
         <label for="name">Имя <span class="optional">(необязательно)</span></label>
         <input id="name" type="text" maxlength="30" placeholder="Например: Александр" autocomplete="off" />
@@ -104,7 +113,7 @@
     </template>
 
     <footer>
-      Поздравь · v4.9.1
+      Поздравь · v4.10
     </footer>
   </main>
   <script src="app.js"></script>
