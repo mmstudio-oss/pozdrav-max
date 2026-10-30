@@ -299,26 +299,45 @@ async function getAIVariants(greeting, count) {
   if (!backendConfigured()) {
     throw new Error("Сначала вставьте адрес backend Timeweb в app.js.");
   }
-  const response = await fetch(`${API_BASE_URL}/api/generate-ai-cards`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      initData: getMaxInitData(),
-      occasion: greeting.occasion,
-      visualStyle: greeting.visualStyle,
-      recipientName: greeting.name,
-      details: greeting.details,
-      variantCount: count
-    })
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(result.error || `Ошибка сервера ${response.status}`);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 100000);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/generate-ai-cards`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        initData: getMaxInitData(),
+        occasion: greeting.occasion,
+        visualStyle: greeting.visualStyle,
+        recipientName: greeting.name,
+        details: greeting.details,
+        variantCount: count
+      }),
+      signal: controller.signal
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.error || `Ошибка сервера ${response.status}`);
+    }
+    if (!Array.isArray(result.images) || !result.images.length) {
+      throw new Error("Сервер не вернул варианты изображений.");
+    }
+
+    return result.images.map((item) => ({
+      imageData: item.imageData,
+      sourceLabel: "AI"
+    }));
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("AI-генерация заняла слишком много времени. Попробуйте ещё раз.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  if (!Array.isArray(result.images) || !result.images.length) {
-    throw new Error("Сервер не вернул варианты изображений.");
-  }
-  return result.images.map((item) => ({ imageData: item.imageData, sourceLabel: "AI" }));
 }
 
 function textVisualWidth(context, text) {
