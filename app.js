@@ -4,6 +4,8 @@ const occasionInput = document.getElementById("occasion");
 const visualStyleInput = document.getElementById("visualStyle");
 const sourceModeInput = document.getElementById("sourceMode");
 const variantCountInput = document.getElementById("variantCount");
+const aiQualityInput = document.getElementById("aiQuality");
+const aiQualityField = document.getElementById("aiQualityField");
 const nameInput = document.getElementById("name");
 const detailsInput = document.getElementById("details");
 const personalFields = document.getElementById("personalFields");
@@ -200,23 +202,83 @@ function compactSentence(text, maxLength = 150) {
   return `${(lastSpace > 45 ? short.slice(0, lastSpace) : short).trim()}…`;
 }
 
-function titleFor(occasion, name) {
-  if (!name) {
-    return {
-      birthday: "С днём рождения!",
-      mother: "Для самой любимой мамы",
-      love: "Для тебя",
-      morning: "Доброе утро!",
-      night: "Спокойной ночи"
-    }[occasion];
+const titleVariants = {
+  birthday: [
+    "С днём рождения!",
+    "Пусть мечты сбываются!",
+    "Счастья и вдохновения!"
+  ],
+  mother: [
+    "Для самой любимой мамы",
+    "Маме с любовью",
+    "Спасибо, мама"
+  ],
+  love: [
+    "Для тебя",
+    "Ты — моё счастье",
+    "С любовью"
+  ],
+  morning: [
+    "Доброе утро!",
+    "Пусть день будет прекрасным!",
+    "С новым чудесным днём!"
+  ],
+  night: [
+    "Спокойной ночи",
+    "Сладких снов",
+    "Пусть ночь будет доброй"
+  ]
+};
+
+const detailPhrases = [
+  (details) => `Пусть рядом всегда будет то, что тебе особенно дорого: ${details.toLowerCase()}.`,
+  (details) => `И пусть ${details.toLowerCase()} приносит ещё больше радости.`,
+  (details) => `Пусть в жизни всегда находится место для того, что ты любишь: ${details.toLowerCase()}.`
+];
+
+function titleForVariant(occasion, name, variantIndex = 0) {
+  const titles = titleVariants[occasion] || titleVariants.birthday;
+  const base = titles[variantIndex % titles.length];
+
+  if (!name) return base;
+
+  if (occasion === "birthday") {
+    return [
+      `${name}, с днём рождения!`,
+      `${name}, пусть мечты сбываются!`,
+      `${name}, счастья и вдохновения!`
+    ][variantIndex % 3];
   }
-  return {
-    birthday: `${name}, с днём рождения!`,
-    mother: `${name}, это для тебя`,
-    love: `${name}, для тебя`,
-    morning: `${name}, доброе утро!`,
-    night: `${name}, спокойной ночи`
-  }[occasion];
+
+  if (occasion === "mother") {
+    return [
+      `${name}, для тебя`,
+      `${name}, с любовью`,
+      `${name}, спасибо за всё`
+    ][variantIndex % 3];
+  }
+
+  if (occasion === "love") {
+    return [
+      `${name}, для тебя`,
+      `${name}, ты — моё счастье`,
+      `${name}, с любовью`
+    ][variantIndex % 3];
+  }
+
+  if (occasion === "morning") {
+    return [
+      `${name}, доброе утро!`,
+      `${name}, прекрасного дня!`,
+      `${name}, пусть день радует!`
+    ][variantIndex % 3];
+  }
+
+  return [
+    `${name}, спокойной ночи`,
+    `${name}, сладких снов`,
+    `${name}, доброй ночи`
+  ][variantIndex % 3];
 }
 
 function buildGreeting() {
@@ -225,14 +287,43 @@ function buildGreeting() {
   const readyMode = sourceModeInput.value === "ready";
   const name = readyMode ? "" : nameInput.value.trim();
   const details = readyMode ? "" : compactSentence(detailsInput.value.trim(), 56);
-  let text = chooseVariant(textVariants[occasion][visualStyle]);
-  if (details) {
-    text += ` Пусть рядом будет всё, что тебе особенно дорого: ${details.toLowerCase()}.`;
+  const textOffset = Math.floor(Math.random() * 3);
+
+  return {
+    occasion,
+    visualStyle,
+    name,
+    details,
+    readyMode,
+    textOffset
+  };
+}
+
+function greetingForVariant(baseGreeting, variantIndex = 0) {
+  if (baseGreeting.readyMode) {
+    return {
+      ...baseGreeting,
+      title: "",
+      text: ""
+    };
   }
 
-  text = compactSentence(text, 170);
-  return { occasion, visualStyle, name, details, title: titleFor(occasion, name), text, readyMode };
+  const texts = textVariants[baseGreeting.occasion]?.[baseGreeting.visualStyle] || [];
+  const textIndex = (baseGreeting.textOffset + variantIndex) % Math.max(texts.length, 1);
+  let text = texts[textIndex] || "";
+
+  if (baseGreeting.details) {
+    const detailBuilder = detailPhrases[variantIndex % detailPhrases.length];
+    text += ` ${detailBuilder(baseGreeting.details)}`;
+  }
+
+  return {
+    ...baseGreeting,
+    title: titleForVariant(baseGreeting.occasion, baseGreeting.name, variantIndex),
+    text: compactSentence(text, 176)
+  };
 }
+
 
 async function getPhotoVariants(greeting, count) {
   if (!backendConfigured()) {
@@ -313,7 +404,8 @@ async function getAIVariants(greeting, count) {
         visualStyle: greeting.visualStyle,
         recipientName: greeting.name,
         details: greeting.details,
-        variantCount: count
+        variantCount: count,
+        quality: aiQualityInput?.value || "low"
       }),
       signal: controller.signal
     });
@@ -897,7 +989,7 @@ async function buildVariants() {
   clearResults();
   setStatus(
     mode === "ai"
-      ? "Генерируем 2–3 AI-варианта…"
+      ? `Генерируем ${count} разных AI-варианта…`
       : mode === "ready"
         ? "Берём 2–3 готовые открытки из базы…"
         : "Берём 2–3 фото из облачной базы…"
@@ -911,14 +1003,15 @@ async function buildVariants() {
 
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i];
+    const variantGreeting = greetingForVariant(greeting, i);
     const card = createVariantCard(i, item);
     item.readyMade
       ? await renderReadyVariant(card.canvas, item.imageData)
-      : await renderVariant(card.canvas, item.imageData, greeting, i);
+      : await renderVariant(card.canvas, item.imageData, variantGreeting, i);
 
     card.downloadButton.addEventListener("click", async () => {
       const link = document.createElement("a");
-      link.download = cardFileName(greeting, i);
+      link.download = cardFileName(variantGreeting, i);
       link.href = card.canvas.toDataURL("image/png");
       link.click();
       setStatus(`Вариант ${i + 1} сохранён.`);
@@ -960,7 +1053,10 @@ async function handleGenerate() {
 
 function updateSourceModeUi() {
   const readyMode = sourceModeInput.value === "ready";
+  const aiMode = sourceModeInput.value === "ai";
+
   personalFields.classList.toggle("hidden", readyMode);
+  aiQualityField?.classList.toggle("hidden", !aiMode);
 
   if (readyMode) {
     nameInput.value = "";
