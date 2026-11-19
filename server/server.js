@@ -560,7 +560,7 @@ app.post("/api/photo-variants", async (req, res) => {
     const count = Math.min(3, Math.max(2, Number(variantCount || 3)));
     const rateKey = `cloud-photos:${auth.userId}`;
 
-    if (!rateAllowed(rateKey, 60, 10 * 60 * 1000)) {
+    if (!rateAllowed(rateKey, 30, 10 * 60 * 1000)) {
       return res.status(429).json({ error: "Слишком много запросов к фотобазе. Попробуйте через несколько минут." });
     }
 
@@ -586,7 +586,7 @@ app.post("/api/ready-card-variants", async (req, res) => {
     const count = Math.min(18, Math.max(1, Number(variantCount || 12)));
     const rateKey = `ready-cards:${auth.userId}`;
 
-    if (!rateAllowed(rateKey, 30, 10 * 60 * 1000)) {
+    if (!rateAllowed(rateKey, 60, 10 * 60 * 1000)) {
       return res.status(429).json({ error: "Слишком много запросов к базе готовых открыток. Попробуйте через несколько минут." });
     }
 
