@@ -99,10 +99,27 @@ function dataUrlToPngBuffer(imageData) {
 function getOccasionMeta(occasion) {
   const map = {
     birthday: { ru: "день рождения", theme: "subtle festive details, soft bokeh, delicate floral elements, refined birthday atmosphere" },
+    anniversary: { ru: "юбилей", theme: "elegant milestone celebration, refined festive atmosphere, tasteful celebratory details" },
+    wedding: { ru: "свадьба", theme: "romantic wedding atmosphere, elegant florals, rings, silk, soft celebratory light" },
+    relationship_anniversary: { ru: "годовщина отношений или свадьбы", theme: "romantic anniversary mood, shared memories, elegant flowers, warm intimate light" },
     mother: { ru: "открытка для мамы", theme: "elegant flowers, gentle feminine atmosphere, warm care, peonies or garden flowers" },
-    love: { ru: "романтическая открытка", theme: "subtle romantic atmosphere, elegant flowers or warm lights, emotional mood" },
+    father: { ru: "открытка для папы", theme: "warm masculine elegance, restrained premium details, confidence, family warmth" },
+    grandmother: { ru: "открытка для бабушки", theme: "gentle garden flowers, warm home atmosphere, tenderness, family care" },
+    grandfather: { ru: "открытка для дедушки", theme: "warm dignified atmosphere, classic details, family respect, calm rich light" },
+    love_man: { ru: "романтическая открытка любимому мужчине", theme: "romantic but refined atmosphere, warm lights, elegant masculine details, emotional depth" },
+    love_woman: { ru: "романтическая открытка любимой женщине", theme: "romantic elegant flowers, warm glow, tenderness, graceful premium mood" },
     morning: { ru: "утреннее поздравление", theme: "soft sunlight through the window, morning glow, coffee or flowers, airy calm mood" },
-    night: { ru: "пожелание спокойной ночи", theme: "deep blue and violet palette, moonlight, dreamy calm atmosphere, soft glow" }
+    night: { ru: "пожелание спокойной ночи", theme: "deep blue and violet palette, moonlight, dreamy calm atmosphere, soft glow" },
+    thanks: { ru: "открытка благодарности", theme: "warm sincere gratitude, elegant light, subtle flowers or thoughtful details" },
+    sorry: { ru: "открытка с извинением", theme: "gentle sincere atmosphere, calm soft light, emotional restraint, hope and reconciliation" },
+    get_well: { ru: "пожелание скорейшего выздоровления", theme: "fresh light, green leaves, calm optimism, clean uplifting atmosphere" },
+    housewarming: { ru: "новоселье", theme: "beautiful cozy home, warm lights, elegant interior details, welcoming atmosphere" },
+    newborn: { ru: "рождение ребёнка", theme: "soft tender newborn atmosphere, delicate pastel details, warmth, family joy" },
+    march8: { ru: "8 Марта", theme: "spring flowers, elegant feminine atmosphere, fresh light, tulips or mimosa, graceful celebration" },
+    feb23: { ru: "23 Февраля", theme: "restrained masculine celebration, confidence, strength, elegant dark or neutral details" },
+    newyear: { ru: "Новый год", theme: "premium winter celebration, warm garlands, festive glow, snow, elegant seasonal details" },
+    christmas: { ru: "Рождество", theme: "warm Christmas light, candles, subtle winter decor, peaceful family atmosphere" },
+    easter: { ru: "Пасха", theme: "spring light, elegant Easter decor, flowers, gentle festive atmosphere, warmth and hope" }
   };
   return map[occasion] || map.birthday;
 }
@@ -429,14 +446,17 @@ async function getReadyCardVariantsFromCloud({ occasion, visualStyle, variantCou
   const loaded = await loadPhotoManifest();
   const entries = getReadyManifestEntries(loaded.manifest, occasion, visualStyle);
 
-  if (entries.length < variantCount) {
-    throw new Error(`В базе готовых открыток недостаточно файлов для ${occasion}/${visualStyle}. Нужно минимум ${variantCount}.`);
+  if (!entries.length) {
+    throw new Error(`В базе пока нет готовых открыток для ${occasion}/${visualStyle}.`);
   }
 
+  const targetCount = Math.min(Math.max(1, Number(variantCount || 12)), entries.length);
   const candidates = shuffle(entries);
   const images = [];
+
   for (const entry of candidates) {
-    if (images.length >= variantCount) break;
+    if (images.length >= targetCount) break;
+
     try {
       const url = resolvePhotoUrl(entry, loaded.manifestUrl, loaded.origin);
       const imageData = await downloadCloudPhoto(url);
@@ -446,8 +466,8 @@ async function getReadyCardVariantsFromCloud({ occasion, visualStyle, variantCou
     }
   }
 
-  if (images.length < variantCount) {
-    throw new Error("Не удалось загрузить достаточно готовых открыток из облачной базы.");
+  if (!images.length) {
+    throw new Error("Не удалось загрузить ни одной готовой открытки из облачной базы.");
   }
 
   return images;
@@ -525,7 +545,7 @@ app.get("/health", (req, res) => {
   res.json({
     ok: true,
     service: "pozdrav-max-api",
-    version: "4.10-diverse-ai",
+    version: "4.11-ready-catalog",
     imageModel: "aliceai-image-art-3.0",
     cloudPhotoLibraryConfigured: Boolean(PHOTO_LIBRARY_MANIFEST_URL),
     readyCardLibrarySupported: true,
@@ -540,7 +560,7 @@ app.post("/api/photo-variants", async (req, res) => {
     const count = Math.min(3, Math.max(2, Number(variantCount || 3)));
     const rateKey = `cloud-photos:${auth.userId}`;
 
-    if (!rateAllowed(rateKey, 30, 10 * 60 * 1000)) {
+    if (!rateAllowed(rateKey, 60, 10 * 60 * 1000)) {
       return res.status(429).json({ error: "Слишком много запросов к фотобазе. Попробуйте через несколько минут." });
     }
 
@@ -561,9 +581,9 @@ app.post("/api/photo-variants", async (req, res) => {
 
 app.post("/api/ready-card-variants", async (req, res) => {
   try {
-    const { initData, occasion = "birthday", visualStyle = "premium", variantCount = 3 } = req.body || {};
+    const { initData, occasion = "birthday", visualStyle = "premium", variantCount = 12 } = req.body || {};
     const auth = validateOrUseBrowserMode(initData);
-    const count = Math.min(3, Math.max(2, Number(variantCount || 3)));
+    const count = Math.min(18, Math.max(1, Number(variantCount || 12)));
     const rateKey = `ready-cards:${auth.userId}`;
 
     if (!rateAllowed(rateKey, 30, 10 * 60 * 1000)) {
@@ -640,5 +660,5 @@ app.use((error, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Pozdrav MAX API v4.10 Diverse AI запущен на порту ${PORT}`);
+  console.log(`Pozdrav MAX API v4.11 Ready Catalog запущен на порту ${PORT}`);
 });
