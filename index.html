@@ -33,10 +33,27 @@
       <label for="occasion">Повод</label>
       <select id="occasion">
         <option value="birthday">🎂 День рождения</option>
+        <option value="anniversary">🎉 Юбилей</option>
+        <option value="wedding">💍 Свадьба</option>
+        <option value="relationship_anniversary">🥂 Годовщина</option>
         <option value="mother">🌹 Для мамы</option>
-        <option value="love">❤️ Любимому человеку</option>
+        <option value="father">👔 Для папы</option>
+        <option value="grandmother">🌷 Для бабушки</option>
+        <option value="grandfather">🎩 Для дедушки</option>
+        <option value="love_man">❤️ Любимому</option>
+        <option value="love_woman">💖 Любимой</option>
         <option value="morning">☀️ Доброе утро</option>
         <option value="night">🌙 Спокойной ночи</option>
+        <option value="thanks">🙏 Спасибо</option>
+        <option value="sorry">🤍 Прости</option>
+        <option value="get_well">🌿 Выздоравливай</option>
+        <option value="housewarming">🏡 С новосельем</option>
+        <option value="newborn">👶 С рождением ребёнка</option>
+        <option value="march8">🌷 8 Марта</option>
+        <option value="feb23">⭐ 23 Февраля</option>
+        <option value="newyear">🎄 Новый год</option>
+        <option value="christmas">✨ Рождество</option>
+        <option value="easter">🐣 Пасха</option>
       </select>
 
       <label for="visualStyle">Стиль</label>
@@ -55,7 +72,7 @@
             <option value="ready">🖼️ Готовая открытка с текстом</option>
           </select>
         </div>
-        <div>
+        <div id="variantCountField">
           <label for="variantCount">Сколько вариантов</label>
           <select id="variantCount">
             <option value="2">2 варианта</option>
@@ -89,8 +106,8 @@
       <div class="section-title">
         <span class="step">2</span>
         <div>
-          <h2>Выбери лучший вариант</h2>
-          <p>Текст автоматически ищет свободное место на фотографии. Каждую открытку можно скачать или отправить в MAX.</p>
+          <h2 id="resultsTitle">Выбери лучший вариант</h2>
+          <p id="resultsHelp">Текст автоматически ищет свободное место на фотографии. Каждую открытку можно скачать или отправить в MAX.</p>
         </div>
       </div>
       <div id="resultsGrid" class="results-grid"></div>
@@ -112,8 +129,22 @@
       </article>
     </template>
 
+    <div id="readyModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Просмотр открытки">
+      <div class="modal-backdrop js-ready-close"></div>
+      <div class="modal-panel">
+        <button type="button" class="modal-close js-ready-close" aria-label="Закрыть">×</button>
+        <div class="modal-canvas-wrap">
+          <canvas id="readyModalCanvas" width="1080" height="1350"></canvas>
+        </div>
+        <div class="modal-actions">
+          <button id="readyModalDownload" class="button button-secondary">⬇️ Скачать</button>
+          <button id="readyModalSend" class="button button-max">📨 Отправить в MAX</button>
+        </div>
+      </div>
+    </div>
+
     <footer>
-      Поздравь · v4.10
+      Поздравь · v4.11
     </footer>
   </main>
   <script src="app.js"></script>
