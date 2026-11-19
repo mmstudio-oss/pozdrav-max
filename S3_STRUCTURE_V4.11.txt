@@ -1,0 +1,194 @@
+ПОЗДРАВЬ v4.11 — СТРУКТУРА TIMEWEB S3
+=======================================
+
+ФОРМАТ ИЗОБРАЖЕНИЙ
+-------------------
+Готовые открытки: JPG/PNG, вертикальные 4:5, оптимально 1080x1350.
+Фоны без текста: JPG, вертикальные 4:5, оптимально 1440x1800 или 1600x2000.
+
+ПАПКИ
+-----
+
+# День рождения
+birthday/premium/
+ready/birthday/premium/
+birthday/soft/
+ready/birthday/soft/
+birthday/modern/
+ready/birthday/modern/
+
+# Юбилей
+anniversary/premium/
+ready/anniversary/premium/
+anniversary/soft/
+ready/anniversary/soft/
+anniversary/modern/
+ready/anniversary/modern/
+
+# Свадьба
+wedding/premium/
+ready/wedding/premium/
+wedding/soft/
+ready/wedding/soft/
+wedding/modern/
+ready/wedding/modern/
+
+# Годовщина
+relationship_anniversary/premium/
+ready/relationship_anniversary/premium/
+relationship_anniversary/soft/
+ready/relationship_anniversary/soft/
+relationship_anniversary/modern/
+ready/relationship_anniversary/modern/
+
+# Для мамы
+mother/premium/
+ready/mother/premium/
+mother/soft/
+ready/mother/soft/
+mother/modern/
+ready/mother/modern/
+
+# Для папы
+father/premium/
+ready/father/premium/
+father/soft/
+ready/father/soft/
+father/modern/
+ready/father/modern/
+
+# Для бабушки
+grandmother/premium/
+ready/grandmother/premium/
+grandmother/soft/
+ready/grandmother/soft/
+grandmother/modern/
+ready/grandmother/modern/
+
+# Для дедушки
+grandfather/premium/
+ready/grandfather/premium/
+grandfather/soft/
+ready/grandfather/soft/
+grandfather/modern/
+ready/grandfather/modern/
+
+# Любимому
+love_man/premium/
+ready/love_man/premium/
+love_man/soft/
+ready/love_man/soft/
+love_man/modern/
+ready/love_man/modern/
+
+# Любимой
+love_woman/premium/
+ready/love_woman/premium/
+love_woman/soft/
+ready/love_woman/soft/
+love_woman/modern/
+ready/love_woman/modern/
+
+# Доброе утро
+morning/premium/
+ready/morning/premium/
+morning/soft/
+ready/morning/soft/
+morning/modern/
+ready/morning/modern/
+
+# Спокойной ночи
+night/premium/
+ready/night/premium/
+night/soft/
+ready/night/soft/
+night/modern/
+ready/night/modern/
+
+# Спасибо
+thanks/premium/
+ready/thanks/premium/
+thanks/soft/
+ready/thanks/soft/
+thanks/modern/
+ready/thanks/modern/
+
+# Прости
+sorry/premium/
+ready/sorry/premium/
+sorry/soft/
+ready/sorry/soft/
+sorry/modern/
+ready/sorry/modern/
+
+# Выздоравливай
+get_well/premium/
+ready/get_well/premium/
+get_well/soft/
+ready/get_well/soft/
+get_well/modern/
+ready/get_well/modern/
+
+# Новоселье
+housewarming/premium/
+ready/housewarming/premium/
+housewarming/soft/
+ready/housewarming/soft/
+housewarming/modern/
+ready/housewarming/modern/
+
+# Рождение ребёнка
+newborn/premium/
+ready/newborn/premium/
+newborn/soft/
+ready/newborn/soft/
+newborn/modern/
+ready/newborn/modern/
+
+# 8 Марта
+march8/premium/
+ready/march8/premium/
+march8/soft/
+ready/march8/soft/
+march8/modern/
+ready/march8/modern/
+
+# 23 Февраля
+feb23/premium/
+ready/feb23/premium/
+feb23/soft/
+ready/feb23/soft/
+feb23/modern/
+ready/feb23/modern/
+
+# Новый год
+newyear/premium/
+ready/newyear/premium/
+newyear/soft/
+ready/newyear/soft/
+newyear/modern/
+ready/newyear/modern/
+
+# Рождество
+christmas/premium/
+ready/christmas/premium/
+christmas/soft/
+ready/christmas/soft/
+christmas/modern/
+ready/christmas/modern/
+
+# Пасха
+easter/premium/
+ready/easter/premium/
+easter/soft/
+ready/easter/soft/
+easter/modern/
+ready/easter/modern/
+
+ПРАВИЛА
+-------
+- В папках без ready лежат фоны, на которые приложение само накладывает текст.
+- В папках ready лежат полностью готовые открытки с уже встроенным текстом.
+- Для каталога можно начинать даже с 3 файлов. Приложение покажет столько, сколько реально есть.
+- Рекомендуется 12–18 готовых открыток на каждый стиль.
+- Имена файлов в manifest.json должны точно совпадать с S3.
