@@ -4,6 +4,7 @@ const occasionInput = document.getElementById("occasion");
 const visualStyleInput = document.getElementById("visualStyle");
 const sourceModeInput = document.getElementById("sourceMode");
 const variantCountInput = document.getElementById("variantCount");
+const variantCountField = document.getElementById("variantCountField");
 const aiQualityInput = document.getElementById("aiQuality");
 const aiQualityField = document.getElementById("aiQualityField");
 const nameInput = document.getElementById("name");
@@ -14,6 +15,12 @@ const statusMessage = document.getElementById("statusMessage");
 const resultsSection = document.getElementById("resultsSection");
 const resultsGrid = document.getElementById("resultsGrid");
 const variantTemplate = document.getElementById("variantTemplate");
+const resultsTitle = document.getElementById("resultsTitle");
+const resultsHelp = document.getElementById("resultsHelp");
+const readyModal = document.getElementById("readyModal");
+const readyModalCanvas = document.getElementById("readyModalCanvas");
+const readyModalDownload = document.getElementById("readyModalDownload");
+const readyModalSend = document.getElementById("readyModalSend");
 
 let currentCards = [];
 let previousTextIndex = -1;
@@ -104,6 +111,99 @@ const textVariants = {
       "Отдыхай. Завтра будет новый хороший день."
     ]
   }
+};
+
+const genericTextVariants = {
+  anniversary: [
+    "Пусть юбилей откроет новую красивую главу, полную радости и вдохновения.",
+    "Желаю здоровья, ярких событий и исполнения самых важных желаний.",
+    "Пусть впереди будет ещё много счастливых лет, встреч и добрых моментов."
+  ],
+  wedding: [
+    "Пусть ваша семья будет наполнена любовью, доверием и счастливыми событиями.",
+    "Желаю беречь друг друга, мечтать вместе и каждый день выбирать любовь.",
+    "Пусть впереди будет долгая, светлая и очень счастливая семейная история."
+  ],
+  relationship_anniversary: [
+    "Пусть ваша любовь с каждым годом становится только теплее и крепче.",
+    "Желаю ещё множества общих мечтаний, путешествий и счастливых дней.",
+    "Пусть рядом друг с другом всегда будет легко, уютно и по-настоящему хорошо."
+  ],
+  father: [
+    "Желаю крепкого здоровья, уверенности, сил и как можно больше поводов для гордости.",
+    "Спасибо за поддержку, надёжность и всё тепло, которое ты даришь близким.",
+    "Пусть каждый день приносит хорошие новости, спокойствие и радость."
+  ],
+  grandmother: [
+    "Желаю здоровья, душевного тепла, заботы близких и самых светлых дней.",
+    "Пусть дома всегда будет уютно, а рядом — любимые и родные люди.",
+    "Спасибо за доброту, мудрость и тепло, которые делают семью счастливее."
+  ],
+  grandfather: [
+    "Желаю крепкого здоровья, бодрости, спокойствия и добрых семейных встреч.",
+    "Пусть рядом всегда будут родные люди, уважение, забота и хорошее настроение.",
+    "Спасибо за мудрость, силу и истории, которые объединяют всю семью."
+  ],
+  love_man: [
+    "Спасибо, что рядом с тобой можно чувствовать себя спокойно, любимой и счастливой.",
+    "Пусть у нас будет ещё больше тёплых моментов, приключений и общих мечтаний.",
+    "Ты — особенный человек в моей жизни. Пусть наше счастье только растёт."
+  ],
+  love_woman: [
+    "Пусть твоя улыбка как можно чаще делает этот мир красивее.",
+    "Спасибо за нежность, тепло и счастье, которое появляется рядом с тобой.",
+    "Хочу, чтобы впереди у нас было ещё множество красивых совместных моментов."
+  ],
+  thanks: [
+    "Спасибо от всего сердца за помощь, поддержку и добро.",
+    "Твоя забота очень много значит. Спасибо, что оказался рядом.",
+    "Пусть всё добро, которое ты даришь другим, обязательно возвращается."
+  ],
+  sorry: [
+    "Прости. Мне важно сохранить то хорошее и тёплое, что есть между нами.",
+    "Мне очень жаль. Надеюсь, что мы сможем оставить эту ситуацию позади.",
+    "Прости за то, что причинило тебе неприятные чувства. Ты для меня важен."
+  ],
+  get_well: [
+    "Желаю скорейшего восстановления, сил и хорошего самочувствия.",
+    "Пусть каждый новый день приносит больше энергии и уверенности.",
+    "Береги себя и скорее возвращайся к привычной, активной и счастливой жизни."
+  ],
+  housewarming: [
+    "Пусть новый дом станет местом уюта, счастья и самых тёплых встреч.",
+    "Желаю, чтобы в новом доме всегда было светло, спокойно и радостно.",
+    "Пусть здесь рождаются счастливые воспоминания и сбываются большие мечты."
+  ],
+  newborn: [
+    "Пусть малыш растёт здоровым, счастливым и окружённым огромной любовью.",
+    "Желаю вашей семье нежности, терпения, радости и множества чудесных моментов.",
+    "Пусть появление малыша наполнит дом новым счастьем, теплом и улыбками."
+  ],
+  march8: [
+    "Пусть весна подарит вдохновение, красоту, любовь и прекрасное настроение.",
+    "Желаю цветов, комплиментов, приятных сюрпризов и исполнения желаний.",
+    "Пусть каждый день будет наполнен нежностью, заботой и радостными событиями."
+  ],
+  feb23: [
+    "Желаю силы, уверенности, надёжных людей рядом и больших побед.",
+    "Пусть всегда хватает энергии на важные цели, отдых и любимых людей.",
+    "Желаю здоровья, удачи, спокойствия и успеха во всех начинаниях."
+  ],
+  newyear: [
+    "Пусть новый год принесёт счастье, здоровье, любовь и исполнение желаний.",
+    "Желаю яркого года, приятных перемен и множества поводов для радости.",
+    "Пусть впереди ждут добрые события, уютные встречи и настоящие чудеса."
+  ],
+  christmas: [
+    "Пусть Рождество наполнит дом светом, теплом и душевным спокойствием.",
+    "Желаю мира, любви, здоровья и добрых чудес для всей семьи.",
+    "Пусть этот светлый праздник подарит уют, надежду и счастливые мгновения."
+  ],
+  easter: [
+    "Пусть светлый праздник принесёт в дом мир, добро и душевное тепло.",
+    "Желаю здоровья, благополучия, любви и радости всей семье.",
+    "Пусть Пасха наполнит сердце светом, надеждой и спокойствием."
+  ]
 };
 
 const typographyColors = {
@@ -203,31 +303,28 @@ function compactSentence(text, maxLength = 150) {
 }
 
 const titleVariants = {
-  birthday: [
-    "С днём рождения!",
-    "Пусть мечты сбываются!",
-    "Счастья и вдохновения!"
-  ],
-  mother: [
-    "Для самой любимой мамы",
-    "Маме с любовью",
-    "Спасибо, мама"
-  ],
-  love: [
-    "Для тебя",
-    "Ты — моё счастье",
-    "С любовью"
-  ],
-  morning: [
-    "Доброе утро!",
-    "Пусть день будет прекрасным!",
-    "С новым чудесным днём!"
-  ],
-  night: [
-    "Спокойной ночи",
-    "Сладких снов",
-    "Пусть ночь будет доброй"
-  ]
+  birthday: ["С днём рождения!", "Пусть мечты сбываются!", "Счастья и вдохновения!"],
+  anniversary: ["С юбилеем!", "С прекрасной датой!", "С новым этапом!"],
+  wedding: ["С днём свадьбы!", "Счастья молодым!", "Любви на долгие годы!"],
+  relationship_anniversary: ["С годовщиной!", "С нашей датой!", "С любовью сквозь годы"],
+  mother: ["Для самой любимой мамы", "Маме с любовью", "Спасибо, мама"],
+  father: ["Для любимого папы", "Папе с теплом", "Спасибо, папа"],
+  grandmother: ["Для любимой бабушки", "Бабушке с любовью", "Самой доброй бабушке"],
+  grandfather: ["Для любимого дедушки", "Дедушке с теплом", "Самому лучшему дедушке"],
+  love_man: ["Для тебя, любимый", "Ты — моё счастье", "С любовью"],
+  love_woman: ["Для тебя, любимая", "Ты — моё счастье", "С любовью"],
+  morning: ["Доброе утро!", "Пусть день будет прекрасным!", "С новым чудесным днём!"],
+  night: ["Спокойной ночи", "Сладких снов", "Пусть ночь будет доброй"],
+  thanks: ["Спасибо!", "От всего сердца", "С благодарностью"],
+  sorry: ["Прости меня", "Мне очень жаль", "Давай сохраним хорошее"],
+  get_well: ["Выздоравливай!", "Скорее поправляйся!", "Здоровья и сил!"],
+  housewarming: ["С новосельем!", "С новым домом!", "Уюта и счастья!"],
+  newborn: ["С рождением малыша!", "С пополнением!", "Добро пожаловать, малыш!"],
+  march8: ["С 8 Марта!", "С праздником весны!", "Красоты и счастья!"],
+  feb23: ["С 23 Февраля!", "С праздником!", "Силы и удачи!"],
+  newyear: ["С Новым годом!", "Счастливого Нового года!", "Пусть год будет чудесным!"],
+  christmas: ["С Рождеством!", "Светлого Рождества!", "Мира и тепла!"],
+  easter: ["С Пасхой!", "Светлой Пасхи!", "Мира и добра!"]
 };
 
 const detailPhrases = [
@@ -236,10 +333,13 @@ const detailPhrases = [
   (details) => `Пусть в жизни всегда находится место для того, что ты любишь: ${details.toLowerCase()}.`
 ];
 
+function lowerFirst(text) {
+  return text ? text.charAt(0).toLowerCase() + text.slice(1) : text;
+}
+
 function titleForVariant(occasion, name, variantIndex = 0) {
   const titles = titleVariants[occasion] || titleVariants.birthday;
   const base = titles[variantIndex % titles.length];
-
   if (!name) return base;
 
   if (occasion === "birthday") {
@@ -247,22 +347,6 @@ function titleForVariant(occasion, name, variantIndex = 0) {
       `${name}, с днём рождения!`,
       `${name}, пусть мечты сбываются!`,
       `${name}, счастья и вдохновения!`
-    ][variantIndex % 3];
-  }
-
-  if (occasion === "mother") {
-    return [
-      `${name}, для тебя`,
-      `${name}, с любовью`,
-      `${name}, спасибо за всё`
-    ][variantIndex % 3];
-  }
-
-  if (occasion === "love") {
-    return [
-      `${name}, для тебя`,
-      `${name}, ты — моё счастье`,
-      `${name}, с любовью`
     ][variantIndex % 3];
   }
 
@@ -274,11 +358,15 @@ function titleForVariant(occasion, name, variantIndex = 0) {
     ][variantIndex % 3];
   }
 
-  return [
-    `${name}, спокойной ночи`,
-    `${name}, сладких снов`,
-    `${name}, доброй ночи`
-  ][variantIndex % 3];
+  if (occasion === "night") {
+    return [
+      `${name}, спокойной ночи`,
+      `${name}, сладких снов`,
+      `${name}, доброй ночи`
+    ][variantIndex % 3];
+  }
+
+  return `${name}, ${lowerFirst(base)}`;
 }
 
 function buildGreeting() {
@@ -308,7 +396,8 @@ function greetingForVariant(baseGreeting, variantIndex = 0) {
     };
   }
 
-  const texts = textVariants[baseGreeting.occasion]?.[baseGreeting.visualStyle] || [];
+  const styleTexts = textVariants[baseGreeting.occasion]?.[baseGreeting.visualStyle];
+  const texts = styleTexts || genericTextVariants[baseGreeting.occasion] || textVariants.birthday.premium;
   const textIndex = (baseGreeting.textOffset + variantIndex) % Math.max(texts.length, 1);
   let text = texts[textIndex] || "";
 
@@ -931,6 +1020,72 @@ async function renderReadyVariant(canvas, imageSource) {
   ctx.drawImage(img, x, y, width, height);
 }
 
+let readyModalState = null;
+
+function setResultsMode(mode) {
+  const readyMode = mode === "ready";
+  resultsGrid.classList.toggle("ready-catalog", readyMode);
+  resultsTitle.textContent = readyMode ? "Готовые открытки" : "Выбери лучший вариант";
+  resultsHelp.textContent = readyMode
+    ? "Нажмите на открытку, чтобы открыть её крупно, скачать или отправить в MAX."
+    : "Текст автоматически ищет свободное место на фотографии. Каждую открытку можно скачать или отправить в MAX.";
+}
+
+async function openReadyModal(item, greeting, index) {
+  await renderReadyVariant(readyModalCanvas, item.imageData);
+  readyModalState = { item, greeting, index };
+  readyModal.classList.remove("hidden");
+  document.body.classList.add("modal-open");
+}
+
+function closeReadyModal() {
+  readyModal.classList.add("hidden");
+  document.body.classList.remove("modal-open");
+  readyModalState = null;
+}
+
+function createReadyCatalogCard(index, item, greeting) {
+  const article = document.createElement("article");
+  article.className = "ready-catalog-card";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "ready-catalog-thumb";
+  button.setAttribute("aria-label", `Открыть готовую открытку ${index + 1}`);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1350;
+  button.appendChild(canvas);
+
+  const caption = document.createElement("span");
+  caption.className = "ready-catalog-caption";
+  caption.textContent = "Открыть";
+
+  article.append(button, caption);
+  resultsGrid.appendChild(article);
+
+  button.addEventListener("click", () => openReadyModal(item, greeting, index));
+  return canvas;
+}
+
+async function buildReadyCatalog(greeting) {
+  clearResults();
+  setResultsMode("ready");
+  setStatus("Загружаем каталог готовых открыток…");
+
+  const items = await getReadyCardVariants(greeting, 18);
+
+  for (let i = 0; i < items.length; i += 1) {
+    const canvas = createReadyCatalogCard(i, items[i], greeting);
+    await renderReadyVariant(canvas, items[i].imageData);
+  }
+
+  resultsSection.classList.remove("hidden");
+  resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  setStatus(`Готово! В каталоге ${items.length} открыток.`);
+}
+
 function cardFileName(greeting, idx) {
   const base = (greeting.name || greeting.occasion || "otkrytka")
     .trim().toLowerCase().replace(/[^a-zа-яё0-9]+/gi, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "otkrytka";
@@ -986,30 +1141,30 @@ function createVariantCard(index, item) {
 
 async function buildVariants() {
   const greeting = buildGreeting();
-  const count = Math.min(3, Math.max(2, Number(variantCountInput.value || 2)));
   const mode = sourceModeInput.value;
+
+  if (mode === "ready") {
+    await buildReadyCatalog(greeting);
+    return;
+  }
+
+  const count = Math.min(3, Math.max(2, Number(variantCountInput.value || 2)));
   clearResults();
-  setStatus(
-    mode === "ai"
-      ? `Генерируем ${count} разных AI-варианта…`
-      : mode === "ready"
-        ? "Берём 2–3 готовые открытки из базы…"
-        : "Берём 2–3 фото из облачной базы…"
+  setResultsMode(mode);
+  setStatus(mode === "ai"
+    ? `Генерируем ${count} разных AI-варианта…`
+    : "Берём 2–3 фото из облачной базы…"
   );
 
   const items = mode === "ai"
     ? await getAIVariants(greeting, count)
-    : mode === "ready"
-      ? await getReadyCardVariants(greeting, count)
-      : await getPhotoVariants(greeting, count);
+    : await getPhotoVariants(greeting, count);
 
   for (let i = 0; i < items.length; i += 1) {
     const item = items[i];
     const variantGreeting = greetingForVariant(greeting, i);
     const card = createVariantCard(i, item);
-    item.readyMade
-      ? await renderReadyVariant(card.canvas, item.imageData)
-      : await renderVariant(card.canvas, item.imageData, variantGreeting, i);
+    await renderVariant(card.canvas, item.imageData, variantGreeting, i);
 
     card.downloadButton.addEventListener("click", async () => {
       const link = document.createElement("a");
@@ -1059,6 +1214,8 @@ function updateSourceModeUi() {
 
   personalFields.classList.toggle("hidden", readyMode);
   aiQualityField?.classList.toggle("hidden", !aiMode);
+  variantCountField?.classList.toggle("hidden", readyMode);
+  generateButton.textContent = readyMode ? "ПОКАЗАТЬ ОТКРЫТКИ" : "СОЗДАТЬ";
 
   if (readyMode) {
     nameInput.value = "";
@@ -1068,6 +1225,39 @@ function updateSourceModeUi() {
 
 sourceModeInput.addEventListener("change", updateSourceModeUi);
 updateSourceModeUi();
+
+document.querySelectorAll(".js-ready-close").forEach((button) => {
+  button.addEventListener("click", closeReadyModal);
+});
+
+readyModalDownload.addEventListener("click", () => {
+  if (!readyModalState) return;
+  const link = document.createElement("a");
+  link.download = cardFileName(readyModalState.greeting, readyModalState.index);
+  link.href = readyModalCanvas.toDataURL("image/png");
+  link.click();
+});
+
+readyModalSend.addEventListener("click", async () => {
+  if (!readyModalState) return;
+  readyModalSend.disabled = true;
+  try {
+    setStatus("Отправляем открытку в MAX…");
+    await sendCanvasToMax(readyModalCanvas);
+    setStatus("Выберите чат в MAX…");
+  } catch (error) {
+    console.error(error);
+    setStatus(`Не удалось отправить: ${error.message}`, true);
+  } finally {
+    readyModalSend.disabled = false;
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !readyModal.classList.contains("hidden")) {
+    closeReadyModal();
+  }
+});
 
 generateButton.addEventListener("click", handleGenerate);
 nameInput.addEventListener("keydown", (event) => { if (event.key === "Enter") handleGenerate(); });
