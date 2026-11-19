@@ -66,3 +66,119 @@ footer { padding:10px 0; color:var(--muted); font-size:13px; text-align:center; 
 
 .photo-credit { margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .photo-credit a { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+
+
+/* v4.11 — каталог готовых открыток */
+.results-grid.ready-catalog {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ready-catalog-card {
+  min-width: 0;
+}
+
+.ready-catalog-thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ece8f3;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(34, 24, 58, .08);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.ready-catalog-thumb:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(34, 24, 58, .14);
+}
+
+.ready-catalog-thumb canvas {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+}
+
+.ready-catalog-caption {
+  display: block;
+  padding: 7px 4px 0;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 16, 28, .72);
+  backdrop-filter: blur(6px);
+}
+
+.modal-panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 520px);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  padding: 14px;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 28px 70px rgba(0,0,0,.28);
+}
+
+.modal-close {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(24,21,31,.72);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-canvas-wrap {
+  overflow: hidden;
+  border-radius: 18px;
+  background: #ece8f3;
+}
+
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.modal-open {
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .results-grid.ready-catalog { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .results-grid.ready-catalog { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .modal-actions { grid-template-columns: 1fr; }
+  .modal-panel { width: min(100%, 440px); }
+}
